@@ -25,21 +25,27 @@ engine = create_async_engine(
     **get_engine_args(settings.DATABASE_URL)
 )
 
-AsyncSessionLocal = async_sessionmaker(
+_active_sessionmaker = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
     autoflush=False
 )
 
+class AsyncSessionLocalProxy:
+    def __call__(self, *args, **kwargs):
+        return _active_sessionmaker(*args, **kwargs)
+
+AsyncSessionLocal = AsyncSessionLocalProxy()
+
 Base = declarative_base()
 
 def switch_to_sqlite():
-    global engine, AsyncSessionLocal
+    global engine, _active_sessionmaker
     fallback_url = f"sqlite+aiosqlite:///{settings.STORAGE_DIR}/bid_desk.db"
     settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     engine = create_async_engine(fallback_url, echo=settings.DEBUG, future=True, connect_args={"check_same_thread": False})
-    AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+    _active_sessionmaker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
     return fallback_url
 
 async def get_db():
@@ -50,7 +56,7 @@ async def get_db():
             await session.close()
 
 async def init_db():
-    global engine, AsyncSessionLocal
+    global engine, _active_sessionmaker
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
