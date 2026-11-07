@@ -78,7 +78,7 @@ class ThrivewaveSMSClient:
         donor_str = f" from {donor}" if donor else ""
         short_title = tender_title[:40] + ("..." if len(tender_title) > 40 else "")
         msg = (
-            f"🎯 [BidDesk High-Fit Alert]: New tender{donor_str} scored {fit_score}/100 ({bid_decision})! "
+            f"[BidDesk High-Fit Alert]: New tender{donor_str} scored {fit_score}/100 ({bid_decision})! "
             f"'{short_title}'. Pipeline initiated. Review draft shortly."
         )
         return await self.send_sms(phone or self.settings.BID_LEAD_PHONE, msg)
@@ -93,7 +93,7 @@ class ThrivewaveSMSClient:
     ) -> Dict[str, Any]:
         short_title = tender_title[:35] + ("..." if len(tender_title) > 35 else "")
         msg = (
-            f"📄 [BidDesk Review Ready]: Word .docx technical proposal ready for '{short_title}'. "
+            f"[BidDesk Review Ready]: Word .docx technical proposal ready for '{short_title}'. "
             f"Fit: {fit_score}/100 ({bid_decision}). Log in to BidDesk to review & decide. "
             f"Ref: {tender_id[:8]}"
         )
@@ -108,7 +108,7 @@ class ThrivewaveSMSClient:
         phone: Optional[str] = None
     ) -> Dict[str, Any]:
         msg = (
-            f"⚠️ [BidDesk Spend Alert]: AI {spend_type} spend reached {pct:.1f}% of limit! "
+            f"[BidDesk Spend Alert]: AI {spend_type} spend reached {pct:.1f}% of limit! "
             f"Current: ${current_usd:.2f} / ${cap_usd:.2f}. Automated tripwires active."
         )
         return await self.send_sms(phone or self.settings.BID_LEAD_PHONE, msg)
@@ -122,7 +122,7 @@ class ThrivewaveSMSClient:
     ) -> Dict[str, Any]:
         short_title = tender_title[:35] + ("..." if len(tender_title) > 35 else "")
         msg = (
-            f"✅ [BidDesk Decision]: Reviewer {reviewer_name} recorded '{decision}' "
+            f"[BidDesk Decision]: Reviewer {reviewer_name} recorded '{decision}' "
             f"for tender '{short_title}'. Audit logged."
         )
         return await self.send_sms(phone or self.settings.BID_LEAD_PHONE, msg)

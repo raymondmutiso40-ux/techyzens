@@ -6,7 +6,7 @@ from typing import Optional
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
-    APP_NAME: str = "BidDesk AI - Autonomous Bid Intelligence System"
+    APP_NAME: str = "TenderPilot BidDesk AI - Autonomous Bid Intelligence System"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 

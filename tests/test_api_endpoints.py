@@ -78,3 +78,21 @@ async def test_spend_status_endpoint(client: AsyncClient):
     data = resp.json()
     assert "daily_spend_usd" in data
     assert "daily_cap_usd" in data
+
+
+@pytest.mark.asyncio
+async def test_auth_request_and_verify(client: AsyncClient):
+    # Request code
+    req_res = await client.post("/auth/request-code", json={"phone": "+254712345678"})
+    assert req_res.status_code == 200
+    req_data = req_res.json()
+    assert req_data["ok"] is True
+    demo_code = req_data.get("demo_code", "123456")
+
+    # Verify code
+    verify_res = await client.post("/auth/verify-code", json={"phone": "+254712345678", "code": demo_code})
+    assert verify_res.status_code == 200
+    v_data = verify_res.json()
+    assert v_data["authenticated"] is True
+    assert v_data["phone"] == "+254712345678"
+    assert v_data["user"]["name"] == "Romano Juma"

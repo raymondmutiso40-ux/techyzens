@@ -18,15 +18,25 @@ class TenderCreate(TenderBase):
 
 class TenderResponse(TenderBase):
     id: str
-    reference_code: Optional[str]
+    reference_code: Optional[str] = None
     status: str
-    bid_decision: Optional[str]
-    fit_score: Optional[int]
+    bid_decision: Optional[str] = None
+    fit_score: Optional[int] = None
+    fitScore: Optional[int] = None
+    stage: Optional[str] = None
+    recommendation: Optional[str] = None
+    strengths: List[str] = []
+    risks: List[str] = []
+    tor: Optional[Any] = None
+    matchedTeam: Optional[List[Dict[str, Any]]] = None
+    missingExpertise: Optional[List[str]] = None
+    humanDecision: Optional[Dict[str, Any]] = None
+    outcome: Optional[Dict[str, Any]] = None
+    submittedAt: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
-
+    model_config = ConfigDict(from_attributes=True, extra="allow")
 # --- TOR Schemas ---
 class TORResponse(BaseModel):
     id: str

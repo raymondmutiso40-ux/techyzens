@@ -31,7 +31,7 @@ async def run_demo():
         print(f"Budget: {target_tender.budget}")
         print("-" * 80)
 
-        print("\n🚀 Executing 7 Moves from Tender Notice to Review-Ready Draft...")
+        print("\nExecuting 7 Moves from Tender Notice to Review-Ready Draft...")
         report = await PipelineOrchestrator.run_full_pipeline(
             db=db,
             tender_id=target_tender.id,
@@ -55,7 +55,7 @@ async def run_demo():
 
         print("\n" + "-" * 80)
         print("CRITICAL GOVERNANCE CHECK (Slide 1 & 8):")
-        print(f"📢 \"{report['governance_rule']}\"")
+        print(f"\"{report['governance_rule']}\"")
         print("The system has STOPPED at the draft stage. No submission was made.")
         print("-" * 80)
 
@@ -69,10 +69,10 @@ async def run_demo():
             reviewer_email="janet@acme-consulting.org",
             comments="Proposal methodology is exceptionally strong. Team allocation approved. Ready for partner signoff."
         )
-        print(f"✅ Human Decision Recorded: {decision_report['decision']}")
-        print(f"👤 Reviewer: {decision_report['reviewer']}")
-        print(f"📝 Final Tender Status: {decision_report['status']}")
-        print(f"📱 Thrivewave SMS confirmation dispatched.")
+        print(f"Human Decision Recorded: {decision_report['decision']}")
+        print(f"Reviewer: {decision_report['reviewer']}")
+        print(f"Final Tender Status: {decision_report['status']}")
+        print(f"Thrivewave SMS confirmation dispatched.")
         print("=" * 80)
 
 if __name__ == "__main__":
