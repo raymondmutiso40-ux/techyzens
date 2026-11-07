@@ -1,52 +1,96 @@
-import base64, requests, json, os
-from dotenv import load_dotenv
+"""Thrivewave SMS provider adapter.
 
-load_dotenv()
+The adapter is intentionally side-effect free on import. Provider calls only
+happen when one of the exported functions is invoked.
+"""
 
-msisdn   = = os.getenv("THRIVEVAS_MSISDN")
-password = os.getenv("THRIVEVAS_PASSWORD")
+import base64
+import os
+from typing import Any
 
-generated_auth = base64.urlsafe_b64encode(f"{msisdn}:{password}".encode()).decode()
+import httpx
 
-headers = {
-    "Content-Type":  "application/json",
-    "Authorization": f"Basic {generated_auth}",
-}
 
-resp = requests.post(
-    "https://identity.thrivevas.com/v1/auth/api-key/generate",
-    json={"name": "my-integration", "lifetime_seconds": 86400},
-    headers=headers,
-)
+class SMSProviderError(RuntimeError):
+    """Raised when the SMS provider cannot accept a message."""
 
-print("Status:", resp.status_code)
-print("Resp headers:", dict(resp.headers))
-print("Raw body:", resp.text)
 
-try:
-    data = resp.json()
-except ValueError:
-    data = None
+def _required_setting(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise SMSProviderError(f"Missing required setting: {name}")
+    return value
 
-# search recursively for any token-like field
-def find_token(obj):
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if isinstance(v, str) and ("token" in k.lower() or "key" in k.lower()):
-                return k, v
-            found = find_token(v)
-            if found:
-                return found
-    elif isinstance(obj, list):
-        for item in obj:
-            found = find_token(item)
-            if found:
-                return found
-    return None
 
-if data is not None:
-    hit = find_token(data)
-    if hit:
-        print(f"Found token under '{hit[0]}': {hit[1]}")
-    else:
-        print("No token-like key in JSON. Full data:", json.dumps(data, indent=2))
+async def send_sms(
+    to: str,
+    message: str,
+    *,
+    callback_url: str | None = None,
+) -> dict[str, Any]:
+    """Send an application-controlled SMS through the configured provider."""
+    url = _required_setting("THRIVEWAVE_API_URL")
+    api_key = _required_setting("THRIVEWAVE_API_KEY")
+
+    body: dict[str, str] = {"message": message, "msisdn": to}
+    sender_id = os.getenv("THRIVEWAVE_SENDER_ID")
+    if sender_id:
+        body["sender_id"] = sender_id
+    if callback_url:
+        body["callback_url"] = callback_url
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                url,
+                json=body,
+                headers={"Content-Type": "application/json", "x-api-key": api_key},
+            )
+    except httpx.RequestError as exc:
+        raise SMSProviderError("SMS provider request failed") from exc
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise SMSProviderError("SMS provider returned a non-JSON response") from exc
+
+    provider_status = data.get("status", response.status_code)
+    if response.is_error or (
+        isinstance(provider_status, int) and provider_status >= 400
+    ):
+        raise SMSProviderError("SMS provider rejected the message")
+
+    return data
+
+
+async def generate_api_key(
+    msisdn: str,
+    password: str,
+    *,
+    name: str = "tenderpilot",
+    lifetime_seconds: int = 86400,
+    url: str | None = None,
+) -> dict[str, Any]:
+    """Explicitly request a provider API key; never runs during module import."""
+    url = url or _required_setting("THRIVEWAVE_IDENTITY_API_URL")
+    credentials = base64.b64encode(f"{msisdn}:{password}".encode()).decode()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                url,
+                json={"name": name, "lifetime_seconds": lifetime_seconds},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Basic {credentials}",
+                },
+            )
+    except httpx.RequestError as exc:
+        raise SMSProviderError("API-key request failed") from exc
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise SMSProviderError("API-key endpoint returned a non-JSON response") from exc
+    if response.is_error:
+        raise SMSProviderError("API-key endpoint rejected the request")
+    return data
