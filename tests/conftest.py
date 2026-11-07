@@ -1,3 +1,12 @@
+import os
+
+# Force-disable real SMS and drop any provider credentials before the app is imported,
+# so running the tests (locally or in CI) can never message a real phone.
+os.environ["ENABLE_SMS_ALERTS"] = "false"
+os.environ["THRIVEWAVE_API_KEY"] = ""
+os.environ["THRIVEWAS_MSISDN"] = ""
+os.environ["THRIVEWAS_PASSWORD"] = ""
+
 import asyncio
 import pytest
 import pytest_asyncio

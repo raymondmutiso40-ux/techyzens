@@ -58,14 +58,20 @@ async def request_code(payload: PhoneRequest, request: Request):
     
     # Dispatch via Thrivewave SMS
     sms_res = await thrivewave_client.send_sms(to_phone=phone, message=msg)
-    logger.info(f"OTP generated for {phone}: {code} (Thrivewave status: {sms_res.get('status')})")
-    
-    return {
+    sms_status = sms_res.get("status")
+    # Never log the code itself (docs/AUTH.md).
+    logger.info(f"OTP requested for {phone} (SMS status: {sms_status})")
+
+    response = {
         "ok": True,
         "message": "If the number is eligible, a verification code has been sent.",
         "phone": phone,
-        "demo_code": code  # Provided for seamless review & automated UI testing
     }
+    # Demo mode only: when no real SMS went out (SMS disabled or simulated), return the
+    # code so local development and UI tests can sign in. A real send never exposes it.
+    if sms_status in ("disabled", "mock_sent", "skipped"):
+        response["demo_code"] = code
+    return response
 
 @router.post("/verify-code")
 async def verify_code(payload: VerifyCodeRequest, response: Response):
