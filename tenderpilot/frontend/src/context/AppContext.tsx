@@ -14,6 +14,7 @@ import {
   initialProposals,
   initialAuditLogs,
 } from '../data/mockData';
+import { applyTenderDecision, applyTenderOutcome } from '../utils/tenderLogic';
 
 interface UserProfile {
   name: string;
@@ -37,8 +38,8 @@ interface AppContextType {
   /** Add a document the backend has already stored and indexed. */
   addIndexedDocument: (doc: KBDocument) => void;
   updateTenderStage: (tenderId: string, stage: PipelineStage) => void;
-  recordDecision: (tenderId: string, decision: 'bid' | 'no_bid', notes?: string) => void;
-  recordOutcome: (tenderId: string, outcome: 'won' | 'lost', learningNote: string) => void;
+  recordDecision: (tenderId: string, decision: 'bid' | 'no_bid', notes?: string) => Promise<boolean>;
+  recordOutcome: (tenderId: string, outcome: 'won' | 'lost', learningNote: string) => Promise<boolean>;
   markSubmittedByHuman: (tenderId: string) => void;
   swapConsultantOnTender: (tenderId: string, oldId: string, newDocId: string) => void;
   removeConsultantFromTender: (tenderId: string, consultantId: string) => void;
@@ -304,27 +305,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const recordDecision = (tenderId: string, decision: 'bid' | 'no_bid', notes?: string) => {
+  const recordDecision = async (tenderId: string, decision: 'bid' | 'no_bid', notes?: string) => {
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const tender = tenders.find((t) => t.id === tenderId);
 
-    setTenders((prev) =>
-      prev.map((t) => {
-        if (t.id !== tenderId) return t;
-        return {
-          ...t,
-          stage: decision,
-          decision: {
-            decision,
-            decidedBy: user.name,
-            decidedAt: now,
-            notes: notes || (decision === 'bid' ? 'Proceed with proposal drafting.' : 'Declined opportunity.'),
-          },
-        };
-      })
-    );
+    setTenders((prev) => prev.map((t) => t.id === tenderId
+      ? applyTenderDecision(t, decision, user.name, now, notes)
+      : t));
 
-    recordDecisionOnApi(tenderId, decision, notes);
+    const synced = await recordDecisionOnApi(tenderId, decision, notes);
     addAuditLog({
       actor: 'user',
       actorName: user.name,
@@ -334,27 +323,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       source: 'Bid Desk',
       details: `Human decision recorded: ${decision.toUpperCase()}. ${notes || ''}`,
     });
+    return synced;
   };
 
-  const recordOutcome = (tenderId: string, outcome: 'won' | 'lost', learningNote: string) => {
+  const recordOutcome = async (tenderId: string, outcome: 'won' | 'lost', learningNote: string) => {
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const tender = tenders.find((t) => t.id === tenderId);
 
-    setTenders((prev) =>
-      prev.map((t) => {
-        if (t.id !== tenderId) return t;
-        return {
-          ...t,
-          outcome: {
-            outcome,
-            markedAt: now,
-            learningNote,
-          },
-        };
-      })
-    );
+    setTenders((prev) => prev.map((t) => t.id === tenderId
+      ? applyTenderOutcome(t, outcome, now, learningNote)
+      : t));
 
-    recordOutcomeOnApi(tenderId, outcome, learningNote);
+    const synced = await recordOutcomeOnApi(tenderId, outcome, learningNote);
     addAuditLog({
       actor: 'user',
       actorName: user.name,
@@ -364,6 +344,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       source: 'Bid Desk Feedback',
       details: `Tender marked as ${outcome.toUpperCase()}. Learning note: ${learningNote}`,
     });
+    return synced;
   };
 
   const markSubmittedByHuman = (tenderId: string) => {

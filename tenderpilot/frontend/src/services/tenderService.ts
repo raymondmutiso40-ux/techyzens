@@ -1,5 +1,6 @@
 import type { Tender, TOR } from '../data/mockData';
-import { fromApiTender, type ApiTender } from './apiTender';
+import type { ApiTender } from './apiTender';
+import { normalizeApiTender } from '../utils/tenderLogic';
 
 const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
 
@@ -21,8 +22,8 @@ export async function fetchTenders(): Promise<Tender[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        // Backend uses its own field names; convert so pages never see undefined fields
-        return (data as ApiTender[]).filter((t) => t && t.id).map(fromApiTender);
+        // Backend uses its own field names; normalize before pages render the records.
+        return (data as ApiTender[]).filter((t) => t && t.id).map(normalizeApiTender);
       }
     }
   } catch (err) {

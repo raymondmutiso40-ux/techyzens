@@ -29,6 +29,15 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: /deadline calendar/i })).toBeInTheDocument();
   });
 
+  it('shows the UNICEF tender title and reference and includes WHO AFRO in the deadline calendar', () => {
+    renderDashboard();
+    expect(screen.getByText('UNICEF-HQ-2026-119')).toBeInTheDocument();
+    expect(screen.getAllByText('Modernization of Sub-National Supply Chain Tracking & Variance Analytics').length).toBeGreaterThan(0);
+    expect(screen.getByText(/no outcomes logged yet/i)).toBeInTheDocument();
+    const whoDeadlineCell = document.querySelector('td[title*="Technical Advisory for Disease Surveillance"]');
+    expect(whoDeadlineCell).toBeInTheDocument();
+  });
+
   it('removes a tender from the go/no-go list once a decision is recorded', async () => {
     const user = userEvent.setup();
     renderDashboard();
@@ -39,6 +48,17 @@ describe('DashboardPage', () => {
 
     const after = within(awaitingCard()).queryAllByRole('button', { name: /approve bid/i }).length;
     expect(after).toBe(before - 1);
+
+    const deadlineCard = screen.getByRole('heading', { name: /upcoming submission deadlines/i }).closest('section')!;
+    const logButtons = within(deadlineCard).getAllByRole('button', { name: /log outcome/i });
+    expect(JSON.parse(localStorage.getItem('tp_tenders_v2')!).find((t: { id: string }) => t.id === 'tender-2')).toMatchObject({ stage: 'bid', decision: { decision: 'bid' } });
+    await user.click(logButtons[2]);
+    await user.type(screen.getByLabelText(/debrief notes/i), 'Strong team match');
+    await user.click(screen.getByRole('button', { name: /save outcome/i }));
+
+    const saved = JSON.parse(localStorage.getItem('tp_tenders_v2')!).find((t: { id: string }) => t.id === 'tender-2');
+    expect(saved.outcome).toMatchObject({ outcome: 'won', learningNote: 'Strong team match' });
+    expect(within(deadlineCard).queryAllByRole('button', { name: /log outcome/i })).toHaveLength(logButtons.length - 1);
   });
 
   it('filters the dashboard by tender source', async () => {
