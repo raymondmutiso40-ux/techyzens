@@ -72,6 +72,12 @@ async def serve_spa_app(full_path: str = ""):
     if full_path.startswith(("api", "auth", "docs", "openapi.json", "health", "static", "assets")):
         return {"detail": "Not Found"}
     
+    # If a specific static file in frontend_dist exists (e.g. favicon.svg, images, icons), serve it
+    if frontend_dist.exists() and full_path:
+        requested_file = frontend_dist / full_path
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+
     # Try serving compiled React Vite dist
     if frontend_dist.exists() and (frontend_dist / "index.html").exists():
         return FileResponse(frontend_dist / "index.html")

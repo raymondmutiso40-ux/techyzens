@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Menu, Pause, Play, X } from 'lucide-react';
 import { MEDIA } from '../../data/media';
 import { useReveal } from '../../hooks/useReveal';
+import { LogoMark } from '../../components/ui/Logo';
 
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
@@ -71,15 +72,11 @@ const Reveal: React.FC<{ children: React.ReactNode; className?: string }> = ({ c
 };
 
 const Logo: React.FC<{ light?: boolean }> = ({ light }) => (
-  <Link to="/" className={`flex items-center gap-2 ${light ? 'text-white' : 'text-stone-900'}`}>
-    <span
-      className={`h-7 w-7 rounded text-xs font-semibold flex items-center justify-center ${
-        light ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'
-      }`}
-    >
-      TP
+  <Link to="/" className="flex items-center gap-2.5">
+    <LogoMark size="md" theme={light ? 'dark' : 'light'} />
+    <span className={`font-semibold tracking-tight ${light ? 'text-white' : 'text-stone-900'}`}>
+      Tender<span className="text-cyan-500">Pilot</span>
     </span>
-    <span className="font-semibold tracking-tight">TenderPilot</span>
   </Link>
 );
 

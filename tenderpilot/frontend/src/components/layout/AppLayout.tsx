@@ -12,6 +12,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { LogoMark } from '../ui/Logo';
 
 interface NavItem {
   name: string;
@@ -43,9 +44,7 @@ export const AppLayout: React.FC = () => {
       {/* Mobile Top Bar */}
       <header className="md:hidden bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center">
-            TP
-          </div>
+          <LogoMark size="sm" theme="light" />
           <span className="font-semibold text-sm text-slate-900 tracking-tight">TenderPilot</span>
         </div>
         <button
@@ -69,12 +68,10 @@ export const AppLayout: React.FC = () => {
           {/* Brand Header */}
           <div className="px-4 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center">
-                TP
-              </div>
+              <LogoMark size="md" theme="light" />
               <div>
                 <div className="font-semibold text-sm text-slate-900 leading-none">TenderPilot</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Bid Desk Pipeline</div>
+                <div className="text-[11px] text-slate-500 mt-0.5 font-medium">Bid Desk Pipeline</div>
               </div>
             </div>
           </div>
