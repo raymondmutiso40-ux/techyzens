@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+*.db
+*.xlsx
+__pycache__/
+.venv/
+tenders.log
