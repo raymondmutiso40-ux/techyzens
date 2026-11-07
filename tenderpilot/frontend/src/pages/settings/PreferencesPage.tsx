@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PageHeader, Button, Input, Badge } from '../../components/ui';
+import { PageHeader, Button, Input } from '../../components/ui';
 import { X } from 'lucide-react';
 
 interface SourceOption {

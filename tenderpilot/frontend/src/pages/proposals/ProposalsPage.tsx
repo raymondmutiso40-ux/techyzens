@@ -6,16 +6,10 @@ import {
   Badge,
   Select,
   EmptyState,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   StatusDot
 } from '../../components/ui';
 import { useApp } from '../../context/AppContext';
-import type { GeneratedProposal, ProposalSection } from '../../data/mockData';
+import type { ProposalSection } from '../../data/mockData';
 
 export const ProposalsPage: React.FC = () => {
   const {

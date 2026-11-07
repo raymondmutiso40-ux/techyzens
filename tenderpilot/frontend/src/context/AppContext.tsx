@@ -6,8 +6,6 @@ import type {
   GeneratedProposal,
   AuditLogEntry,
   PipelineStage,
-  DecisionRecord,
-  OutcomeFeedback,
   TOR,
 } from '../data/mockData';
 import {
@@ -34,6 +32,10 @@ interface AppContextType {
   deleteDocument: (id: string) => void;
   tenders: Tender[];
   addTenderFromTOR: (fileName: string, extractedTOR: TOR) => Tender;
+  /** Add a tender returned by the backend (uploaded TOR file or imported link). */
+  addImportedTender: (tender: Tender, origin: string) => void;
+  /** Add a document the backend has already stored and indexed. */
+  addIndexedDocument: (doc: KBDocument) => void;
   updateTenderStage: (tenderId: string, stage: PipelineStage) => void;
   recordDecision: (tenderId: string, decision: 'bid' | 'no_bid', notes?: string) => void;
   recordOutcome: (tenderId: string, outcome: 'won' | 'lost', learningNote: string) => void;
@@ -200,6 +202,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       event: 'extracted',
       source: 'Knowledge Base',
       details: `Indexed document "${docData.name}" (${docData.type}).`,
+    });
+  };
+
+  const addIndexedDocument = (doc: KBDocument) => {
+    setDocuments((prev) => [doc, ...prev.filter((d) => d.id !== doc.id)]);
+    addAuditLog({
+      actor: 'user',
+      actorName: user.name,
+      event: 'extracted',
+      source: 'Knowledge Base',
+      details: `Uploaded and indexed "${doc.name}" (${doc.type}, ${doc.size}).`,
+    });
+  };
+
+  const addImportedTender = (tender: Tender, origin: string) => {
+    setTenders((prev) => [tender, ...prev.filter((t) => t.id !== tender.id)]);
+    addAuditLog({
+      actor: 'user',
+      actorName: user.name,
+      event: 'extracted',
+      tenderId: tender.id,
+      tenderTitle: tender.title,
+      source: origin,
+      details: `Tender added from ${origin}. Fit score ${tender.fitScore}/100.`,
     });
   };
 
@@ -611,6 +637,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteDocument,
         tenders,
         addTenderFromTOR,
+        addImportedTender,
+        addIndexedDocument,
         updateTenderStage,
         recordDecision,
         recordOutcome,

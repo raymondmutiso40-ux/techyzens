@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="8" fill="#0f172a"/>
+  <!-- Sweeping cyan orbit -->
+  <path d="M10 27 C 8 36, 18 41, 30 37 C 38 34, 42 27, 38 21" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M38 21 C 36 17, 30 14, 22 15 C 13 16, 9 21, 9 27" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Ascending paper airplane -->
+  <path d="M34 10 L44 8 L37 17 L35 13 Z" fill="#06b6d4"/>
+  <path d="M35 13 L44 8 L40 12 Z" fill="#0891b2"/>
+  <!-- T in pure white -->
+  <path d="M15 19 H26 V22 H22 V33 H19 V22 H15 V19 Z" fill="#ffffff"/>
+  <!-- P in cyan -->
+  <path d="M23 19 H31 C 34.5 19, 36.5 21, 35.5 25 C 34.5 28.5, 32 30, 28 30 H25 V33 H22 L23 19 Z M26 22 V27 H28.5 C 30.5 27, 32 26, 32.5 24.5 C 33 23, 32 22, 30 22 H26 Z" fill="#06b6d4"/>
+</svg>

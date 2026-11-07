@@ -14,13 +14,15 @@ import {
   Modal,
   Input,
   Select,
-  EmptyState
+  EmptyState,
+  FileDropzone
 } from '../../components/ui';
 import { useApp } from '../../context/AppContext';
 import type { KBDocument } from '../../data/mockData';
+import { ACCEPT_ATTR, uploadKnowledgeDocument, validateUploadFile } from '../../services/intakeService';
 
 export const KnowledgeBasePage: React.FC = () => {
-  const { documents, addDocument, deleteDocument } = useApp();
+  const { documents, addIndexedDocument, deleteDocument } = useApp();
   const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'CONSULTANTS'>('DOCUMENTS');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
@@ -28,7 +30,9 @@ export const KnowledgeBasePage: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Form state
-  const [newDocName, setNewDocName] = useState('');
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [newDocType, setNewDocType] = useState<'CV' | 'Past Proposal' | 'Capability Statement'>('CV');
   const [newConsultantName, setNewConsultantName] = useState('');
   const [newSkills, setNewSkills] = useState('');
@@ -45,24 +49,53 @@ export const KnowledgeBasePage: React.FC = () => {
 
   const consultants = documents.filter((d) => d.type === 'CV' && d.consultantName);
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDocName) return;
-
-    addDocument({
-      name: newDocName.endsWith('.pdf') || newDocName.endsWith('.docx') ? newDocName : `${newDocName}.pdf`,
-      type: newDocType,
-      size: '1.4 MB',
-      consultantName: newDocType === 'CV' ? newConsultantName : undefined,
-      keySkills: newSkills ? newSkills.split(',').map((s) => s.trim()) : ['Consulting'],
-      summary: newSummary || 'Parsed profile and capability record.',
-    });
-
-    setShowUploadModal(false);
-    setNewDocName('');
+  const resetUploadForm = () => {
+    setNewFile(null);
     setNewConsultantName('');
     setNewSkills('');
     setNewSummary('');
+    setUploadError(null);
+  };
+
+  const closeUploadModal = () => {
+    if (isUploading) return;
+    setShowUploadModal(false);
+    resetUploadForm();
+  };
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadError(null);
+    if (!newFile) {
+      setUploadError('Choose a file to upload.');
+      return;
+    }
+    const problem = validateUploadFile(newFile);
+    if (problem) {
+      setUploadError(problem);
+      return;
+    }
+    if (newDocType === 'CV' && !newConsultantName.trim()) {
+      setUploadError("Enter the consultant's name.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const doc = await uploadKnowledgeDocument(newFile, {
+        type: newDocType,
+        consultantName: newDocType === 'CV' ? newConsultantName.trim() : undefined,
+        skills: newSkills,
+        summary: newSummary,
+      });
+      addIndexedDocument(doc);
+      setShowUploadModal(false);
+      resetUploadForm();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -232,12 +265,13 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* Upload Modal */}
       <Modal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={closeUploadModal}
         title="Upload Document"
         description="Index firm documents for tender scoring and proposal generation."
       >
-        <form onSubmit={handleUploadSubmit} className="space-y-3">
+        <form onSubmit={handleUploadSubmit} className="space-y-3" noValidate>
           <Select
+            id="kb-doc-type"
             label="Document type"
             value={newDocType}
             onChange={(e) => setNewDocType(e.target.value as any)}
@@ -248,16 +282,20 @@ export const KnowledgeBasePage: React.FC = () => {
             ]}
           />
 
-          <Input
-            label="File or document name"
-            placeholder="e.g. Dr. John Doe - Senior Health Advisor CV.pdf"
-            value={newDocName}
-            onChange={(e) => setNewDocName(e.target.value)}
-            required
+          <FileDropzone
+            label="Document"
+            file={newFile}
+            accept={ACCEPT_ATTR}
+            disabled={isUploading}
+            onFileChange={(f) => {
+              setNewFile(f);
+              setUploadError(f ? validateUploadFile(f) : null);
+            }}
           />
 
           {newDocType === 'CV' && (
             <Input
+              id="kb-consultant-name"
               label="Consultant name"
               placeholder="e.g. Dr. John Doe"
               value={newConsultantName}
@@ -267,6 +305,7 @@ export const KnowledgeBasePage: React.FC = () => {
           )}
 
           <Input
+            id="kb-skills"
             label="Extracted skills & sectors (comma-separated)"
             placeholder="e.g. Public Financial Management, IFMIS, Kenya"
             value={newSkills}
@@ -284,12 +323,18 @@ export const KnowledgeBasePage: React.FC = () => {
             />
           </div>
 
+          {uploadError && (
+            <div role="alert" className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-md">
+              {uploadError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button type="button" variant="secondary" onClick={() => setShowUploadModal(false)}>
+            <Button type="button" variant="secondary" onClick={closeUploadModal} disabled={isUploading}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              Upload and index
+            <Button type="submit" variant="primary" disabled={isUploading}>
+              {isUploading ? 'Uploading…' : 'Upload and index'}
             </Button>
           </div>
         </form>
