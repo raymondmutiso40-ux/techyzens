@@ -12,12 +12,13 @@ import {
   Badge,
   Modal,
   EmptyState,
-  StatusDot,
-  Tabs
+  Tabs,
+  FileDropzone,
+  Segmented
 } from '../../components/ui';
 import { useApp } from '../../context/AppContext';
 import type { Tender, PipelineStage } from '../../data/mockData';
-import { extractTORFromFile } from '../../services/tenderService';
+import { ACCEPT_ATTR, importTenderFromUrl, uploadTorFile, validateUploadFile } from '../../services/intakeService';
 
 const pipelineSteps: { stage: PipelineStage; label: string }[] = [
   { stage: 'found', label: 'Find' },
@@ -34,7 +35,7 @@ export const TendersPage: React.FC = () => {
     tenders,
     documents,
     createProposalForTender,
-    addTenderFromTOR,
+    addImportedTender,
     recordDecision,
     markSubmittedByHuman,
     swapConsultantOnTender,
@@ -48,10 +49,27 @@ export const TendersPage: React.FC = () => {
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
   const [detailTab, setDetailTab] = useState<'OVERVIEW' | 'TOR' | 'TEAM'>('OVERVIEW');
 
-  // Upload TOR modal
+  // Add-tender modal: upload a TOR file or give the agent a link
   const [showUploadTORModal, setShowUploadTORModal] = useState(false);
-  const [torFileName, setTorFileName] = useState('');
+  const [intakeMode, setIntakeMode] = useState<'file' | 'url'>('file');
+  const [torFile, setTorFile] = useState<File | null>(null);
+  const [tenderUrl, setTenderUrl] = useState('');
+  const [intakeError, setIntakeError] = useState<string | null>(null);
   const [isExtractingTOR, setIsExtractingTOR] = useState(false);
+
+  const openIntake = (mode: 'file' | 'url') => {
+    setIntakeMode(mode);
+    setIntakeError(null);
+    setShowUploadTORModal(true);
+  };
+
+  const closeIntake = () => {
+    if (isExtractingTOR) return;
+    setShowUploadTORModal(false);
+    setTorFile(null);
+    setTenderUrl('');
+    setIntakeError(null);
+  };
 
   // Swap consultant state
   const [swappingOldId, setSwappingOldId] = useState<string | null>(null);
@@ -87,16 +105,37 @@ export const TendersPage: React.FC = () => {
 
   const handleUploadTOR = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!torFileName) return;
+    setIntakeError(null);
+    if (intakeMode === 'file') {
+      if (!torFile) {
+        setIntakeError('Choose a TOR file to upload.');
+        return;
+      }
+      const problem = validateUploadFile(torFile);
+      if (problem) {
+        setIntakeError(problem);
+        return;
+      }
+    } else if (!tenderUrl.trim()) {
+      setIntakeError('Paste the link to a tender notice.');
+      return;
+    }
 
     setIsExtractingTOR(true);
-    const extracted = await extractTORFromFile({ name: torFileName, size: 2400000 });
-    const created = addTenderFromTOR(torFileName, extracted);
-    setIsExtractingTOR(false);
-    setShowUploadTORModal(false);
-    setTorFileName('');
-    setSelectedTender(created);
-    setDetailTab('TOR');
+    try {
+      const created =
+        intakeMode === 'file' ? await uploadTorFile(torFile!) : await importTenderFromUrl(tenderUrl);
+      addImportedTender(created, intakeMode === 'file' ? torFile!.name : tenderUrl.trim());
+      setShowUploadTORModal(false);
+      setTorFile(null);
+      setTenderUrl('');
+      setSelectedTender(created);
+      setDetailTab('TOR');
+    } catch (err) {
+      setIntakeError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setIsExtractingTOR(false);
+    }
   };
 
   const handleApproveBid = (tenderId: string) => {
@@ -177,10 +216,12 @@ export const TendersPage: React.FC = () => {
         description="Structured TOR extraction, fit scoring, team matching, and bid decisions."
       >
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setShowUploadTORModal(true)}>
+          <Button size="sm" variant="secondary" onClick={() => openIntake('url')}>
+            Add from link
+          </Button>
+          <Button size="sm" variant="primary" onClick={() => openIntake('file')}>
             Upload TOR
           </Button>
-          <span className="text-xs text-slate-500">Source: UNGM Feed</span>
         </div>
       </PageHeader>
 
@@ -312,6 +353,16 @@ export const TendersPage: React.FC = () => {
           maxWidth="2xl"
         >
           <div className="space-y-4 text-xs">
+            {selectedTender.sourceUrl && (
+              <a
+                href={selectedTender.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-accent-600 hover:underline break-all"
+              >
+                Open original notice ↗
+              </a>
+            )}
             {/* 7-Step Pipeline Progress Indicator (Part B #1) */}
             <div className="p-2.5 bg-slate-50 border border-slate-200 rounded">
               <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1.5">
@@ -680,42 +731,82 @@ export const TendersPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Upload TOR Modal (Part B #2) */}
+      {/* Add tender: upload a TOR file, or give the agent a link to read */}
       <Modal
         isOpen={showUploadTORModal}
-        onClose={() => setShowUploadTORModal(false)}
-        title="Upload Terms of Reference (TOR)"
-        description="Upload a tender PDF or Word document to extract structured scope, criteria, and deadlines."
+        onClose={closeIntake}
+        title="Add a tender"
+        description="Upload the Terms of Reference, or paste a link to the tender notice. TenderPilot reads it, extracts the TOR and scores the fit."
       >
-        <form onSubmit={handleUploadTOR} className="space-y-3 text-xs">
-          <div>
-            <label className="block font-medium text-slate-700 mb-1">
-              Select TOR file (PDF, DOCX)
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. UNDP-KEN-2026-DigitalHealth-TOR.pdf"
-              value={torFileName}
-              onChange={(e) => setTorFileName(e.target.value)}
-              className="w-full h-9 px-3 border border-slate-300 rounded text-xs text-slate-900 bg-white"
+        <form onSubmit={handleUploadTOR} className="space-y-4 text-xs" noValidate>
+          <Segmented
+            ariaLabel="How to add the tender"
+            value={intakeMode}
+            onChange={(m) => {
+              setIntakeMode(m);
+              setIntakeError(null);
+            }}
+            options={[
+              { value: 'file', label: 'Upload file' },
+              { value: 'url', label: 'From a link' },
+            ]}
+          />
+
+          {intakeMode === 'file' ? (
+            <FileDropzone
+              label="TOR document"
+              file={torFile}
+              accept={ACCEPT_ATTR}
+              disabled={isExtractingTOR}
+              onFileChange={(f) => {
+                setTorFile(f);
+                setIntakeError(f ? validateUploadFile(f) : null);
+              }}
             />
-          </div>
+          ) : (
+            <div className="space-y-1">
+              <label htmlFor="tender-url" className="block text-xs font-medium text-slate-700">
+                Link to the tender notice
+              </label>
+              <input
+                id="tender-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://procurement-notices.undp.org/view_notice.cfm?notice_id=..."
+                value={tenderUrl}
+                disabled={isExtractingTOR}
+                onChange={(e) => setTenderUrl(e.target.value)}
+                className="w-full h-9 px-3 bg-white border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-100 focus:border-accent-500"
+              />
+              <p className="text-[11px] text-slate-500">
+                A notice page or a direct link to the TOR PDF/Word file. Pages that need a login can't be read.
+              </p>
+            </div>
+          )}
+
+          {intakeError && (
+            <div role="alert" className="p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              {intakeError}
+            </div>
+          )}
 
           <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-slate-600">
-            Tender documents are treated as data, never as instructions. Automated parser will extract evaluation criteria, required expertise, and deliverables.
+            Tender documents and pages are treated as data, never as instructions.
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowUploadTORModal(false)}
-            >
+            <Button type="button" variant="secondary" onClick={closeIntake} disabled={isExtractingTOR}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isExtractingTOR}>
-              {isExtractingTOR ? 'Extracting TOR...' : 'Extract & create tender'}
+              {isExtractingTOR
+                ? intakeMode === 'file'
+                  ? 'Uploading & extracting…'
+                  : 'Reading page & extracting…'
+                : intakeMode === 'file'
+                  ? 'Upload & extract'
+                  : 'Fetch & extract'}
             </Button>
           </div>
         </form>

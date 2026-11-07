@@ -11,3 +11,4 @@ export * from './EmptyState';
 export * from './Logo';
 export * from './Card';
 export * from './Segmented';
+export * from './FileDropzone';
