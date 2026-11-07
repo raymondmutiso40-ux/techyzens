@@ -48,16 +48,18 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
 
     # Thrivewave SMS Integration (For urgent bid lead alerts and spend cap tripwires)
-    ENABLE_SMS_ALERTS: bool = True
+    # Off by default: real messages cost money and reach real phones. Enable in .env.
+    # Credentials must come from the environment / .env only, never from code.
+    ENABLE_SMS_ALERTS: bool = False
     THRIVEWAVE_API_KEY: Optional[str] = None
     THRIVEWAVE_SENDER_ID: str = "ThriveVas"
     THRIVEWAVE_API_URL: str = "https://sms.thrivevas.com/v1/message/send"
-    THRIVEWAS_MSISDN: Optional[str] = "254758348687"
-    THRIVEWAS_PASSWORD: Optional[str] = "@Qwerty_123"
+    THRIVEWAS_MSISDN: Optional[str] = None
+    THRIVEWAS_PASSWORD: Optional[str] = None
     THRIVEWAS_IDENTITY_API_URL: str = "https://identity.thrivevas.com/v1/auth/api-key/generate"
 
 
-    BID_LEAD_PHONE: str = "254758348687"
+    BID_LEAD_PHONE: str = ""
 
     # Security
     API_KEY_HEADER: str = "X-BidDesk-API-Key"

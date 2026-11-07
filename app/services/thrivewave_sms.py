@@ -23,7 +23,7 @@ class ThrivewaveSMSClient:
         self._cached_api_key: Optional[str] = self.settings.THRIVEWAVE_API_KEY or None
 
     def _format_msisdn(self, phone: str) -> str:
-        """Normalizes telephone number to clean digits for ThriveVAS (e.g. 254758348687)."""
+        """Normalizes telephone number to clean digits for ThriveVAS (e.g. 2547XXXXXXXX)."""
         digits = re.sub(r"[^\d]", "", phone)
         if digits.startswith("0") and len(digits) == 10:
             digits = "254" + digits[1:]
@@ -74,7 +74,10 @@ class ThrivewaveSMSClient:
             logger.info("SMS alerts are disabled in configuration.")
             return {"status": "disabled", "to": to_phone, "message": message}
 
-        target_phone = self._format_msisdn(to_phone or self.settings.BID_LEAD_PHONE)
+        target_phone = self._format_msisdn(to_phone or self.settings.BID_LEAD_PHONE or "")
+        if not target_phone:
+            logger.info("SMS skipped: no recipient phone configured (set BID_LEAD_PHONE in .env).")
+            return {"status": "skipped", "to": "", "message": message}
         api_key = self._cached_api_key or self.settings.THRIVEWAVE_API_KEY
 
         # If no key is set yet, attempt to generate one
