@@ -28,7 +28,7 @@ export const Select: React.FC<SelectProps> = ({
       )}
       <select
         id={selectId}
-        className={`w-full h-9 px-3 bg-white border rounded-md text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-colors duration-150 ${
+        className={`w-full h-9 px-3 bg-white border rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-accent-100 focus:border-accent-500 transition-colors duration-150 ${
           error ? 'border-red-400' : 'border-slate-300 hover:border-slate-400'
         } ${className}`}
         {...props}

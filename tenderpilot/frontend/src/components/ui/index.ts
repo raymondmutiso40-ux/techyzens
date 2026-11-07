@@ -8,3 +8,6 @@ export * from './Tabs';
 export * from './Modal';
 export * from './PageHeader';
 export * from './EmptyState';
+export * from './Logo';
+export * from './Card';
+export * from './Segmented';

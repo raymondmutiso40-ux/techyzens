@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Button, Input } from '../../components/ui';
+import { Button, Input, LogoMark } from '../../components/ui';
 import { MEDIA } from '../../data/media';
 
 export const LoginPage: React.FC = () => {
@@ -140,11 +140,11 @@ export const LoginPage: React.FC = () => {
         </video>
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/40 to-stone-950/30" />
 
-        <Link to="/" className="relative flex items-center gap-2 w-fit">
-          <span className="h-7 w-7 rounded bg-white text-stone-900 text-xs font-semibold flex items-center justify-center">
-            TP
+        <Link to="/" className="relative flex items-center gap-2.5 w-fit">
+          <LogoMark size="md" theme="dark" />
+          <span className="font-semibold tracking-tight text-white">
+            Tender<span className="text-cyan-400">Pilot</span>
           </span>
-          <span className="font-semibold tracking-tight">TenderPilot</span>
         </Link>
 
         <div className="relative hidden lg:block max-w-md">
@@ -167,9 +167,7 @@ export const LoginPage: React.FC = () => {
         </Link>
       <div className="w-full max-w-sm bg-white border border-slate-200 rounded-md p-6 space-y-5">
         <div>
-          <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center mb-3">
-            TP
-          </div>
+          <LogoMark size="lg" theme="light" className="mb-3" />
           <h1 className="text-lg font-semibold text-slate-900">Sign in to TenderPilot</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             SMS one-time code authentication.
