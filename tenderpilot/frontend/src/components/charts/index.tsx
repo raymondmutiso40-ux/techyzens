@@ -135,7 +135,7 @@ export const AreaChart: React.FC<{ data: BarDatum[]; height?: number }> = ({ dat
         <circle key={i} cx={px} cy={py} r="3" fill="#fff" stroke="#f26522" strokeWidth="1.5" />
       ))}
       {data.map((d, i) => (
-        <text key={d.label} x={x(i)} y={H - 4} fontSize="11" fill="#94a3b8"
+        <text key={`${i}-${d.label}`} x={x(i)} y={H - 4} fontSize="11" fill="#94a3b8"
           textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}>
           {d.label}
         </text>
