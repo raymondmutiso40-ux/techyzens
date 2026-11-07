@@ -3,20 +3,23 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
+import { AppProvider } from '../../context/AppContext';
 
 describe('AppLayout Component', () => {
   const renderLayout = (initialRoute = '/tenders') => {
     return render(
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/tenders" element={<div>Tenders Page Content</div>} />
-            <Route path="/knowledge-base" element={<div>Knowledge Base Page Content</div>} />
-            <Route path="/proposals" element={<div>Proposals Page Content</div>} />
-            <Route path="/settings/preferences" element={<div>Preferences Page Content</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <AppProvider>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/tenders" element={<div>Tenders Page Content</div>} />
+              <Route path="/knowledge-base" element={<div>Knowledge Base Page Content</div>} />
+              <Route path="/proposals" element={<div>Proposals Page Content</div>} />
+              <Route path="/settings/preferences" element={<div>Preferences Page Content</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProvider>
     );
   };
 
@@ -33,10 +36,18 @@ describe('AppLayout Component', () => {
     expect(screen.getByRole('link', { name: /preferences/i })).toHaveAttribute('href', '/settings/preferences');
   });
 
+  it('renders fixed sidebar separate from page scroll', () => {
+    renderLayout();
+    const sidebar = screen.getByRole('complementary');
+    expect(sidebar).toHaveClass('fixed');
+    expect(sidebar).toHaveClass('h-screen');
+    expect(sidebar).toHaveClass('w-60');
+  });
+
   it('renders firm and user profile badge', () => {
     renderLayout();
 
-    expect(screen.getByText(/Apex Advisors/i)).toBeInTheDocument();
+    expect(screen.getByText(/Apex/i)).toBeInTheDocument();
     expect(screen.getByText(/\+254 7\d{2} \d{3} \d{3}/i)).toBeInTheDocument();
   });
 
@@ -64,7 +75,6 @@ describe('AppLayout Component', () => {
     const toggleButton = screen.getByRole('button', { name: /toggle navigation/i });
     expect(toggleButton).toBeInTheDocument();
 
-    // Clicking toggle expands/collapses mobile sidebar
     await user.click(toggleButton);
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
 
