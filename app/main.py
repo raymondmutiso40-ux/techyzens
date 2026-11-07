@@ -47,10 +47,17 @@ app.include_router(api_router, prefix="/api")
 
 # Mount Static Assets & Dist
 frontend_dist = Path(__file__).resolve().parent.parent / "tenderpilot" / "frontend" / "dist"
-if frontend_dist.exists() and (frontend_dist / "assets").exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="dist-assets")
-
 static_dir = Path(__file__).resolve().parent.parent / "static"
+
+assets_dir = None
+if frontend_dist.exists() and (frontend_dist / "assets").exists():
+    assets_dir = frontend_dist / "assets"
+elif static_dir.exists() and (static_dir / "assets").exists():
+    assets_dir = static_dir / "assets"
+
+if assets_dir:
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -72,17 +79,23 @@ async def serve_spa_app(full_path: str = ""):
     if full_path.startswith(("api", "auth", "docs", "openapi.json", "health", "static", "assets")):
         return {"detail": "Not Found"}
     
-    # If a specific static file in frontend_dist exists (e.g. favicon.svg, images, icons), serve it
+    # 1. If a specific static file in frontend_dist exists (e.g. favicon.svg, images, icons), serve it
     if frontend_dist.exists() and full_path:
         requested_file = frontend_dist / full_path
         if requested_file.is_file():
             return FileResponse(requested_file)
 
-    # Try serving compiled React Vite dist
+    # 2. If a specific static file in static_dir exists, serve it
+    if static_dir.exists() and full_path:
+        requested_file = static_dir / full_path
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+
+    # 3. Try serving compiled React Vite dist
     if frontend_dist.exists() and (frontend_dist / "index.html").exists():
         return FileResponse(frontend_dist / "index.html")
     
-    # Try fallback static directory
+    # 4. Try serving static directory React bundle
     index_file = static_dir / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
