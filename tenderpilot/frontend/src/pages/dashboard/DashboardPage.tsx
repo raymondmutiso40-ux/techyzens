@@ -36,30 +36,16 @@ import {
   TrackBarChart,
 } from '../../components/charts';
 import { useApp } from '../../context/AppContext';
-import type { PipelineStage, Tender } from '../../data/mockData';
+import type { Tender } from '../../data/mockData';
+import { buildDeadlineWindow, countPipelineStages, parseTenderDate } from '../../utils/tenderLogic';
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-const STAGE_GROUPS: { label: string; stages: PipelineStage[] }[] = [
-  { label: 'Found', stages: ['found', 'extracted'] },
-  { label: 'Scored', stages: ['scored'] },
-  { label: 'Matched', stages: ['matched'] },
-  { label: 'Drafted', stages: ['drafted', 'checked'] },
-  { label: 'In review', stages: ['review_sent'] },
-  { label: 'Bid', stages: ['bid'] },
-  { label: 'Submitted', stages: ['submitted_by_human'] },
-  { label: 'No bid', stages: ['no_bid'] },
-];
-
 const DAY_MS = 86_400_000;
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-const parseDate = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? null : d;
-};
+const parseDate = parseTenderDate;
 
 const daysUntil = (iso: string) => {
   const d = parseDate(iso);
@@ -69,7 +55,7 @@ const daysUntil = (iso: string) => {
   return Math.round((d.getTime() - today.getTime()) / DAY_MS);
 };
 
-const shortDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const shortDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 const isAwaiting = (t: Tender) =>
   !t.decision && (t.stage === 'scored' || t.stage === 'matched' || t.stage === 'found');
@@ -146,6 +132,10 @@ export const DashboardPage: React.FC = () => {
   const [outcomeTender, setOutcomeTender] = useState<Tender | null>(null);
   const [outcomeType, setOutcomeType] = useState<'won' | 'lost'>('won');
   const [learningNote, setLearningNote] = useState('');
+  const [actionPending, setActionPending] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState('');
+  const [outcomeSaving, setOutcomeSaving] = useState(false);
+  const [outcomeError, setOutcomeError] = useState('');
 
   // Core lists
   const awaitingDecision = scoped.filter(isAwaiting);
@@ -159,10 +149,7 @@ export const DashboardPage: React.FC = () => {
   const decided = scoped.filter((t) => t.decision || t.stage === 'no_bid' || t.stage === 'bid' || t.stage === 'submitted_by_human').length;
 
   // Pipeline chart
-  const pipeline = STAGE_GROUPS.map((g) => ({
-    label: g.label,
-    value: scoped.filter((t) => g.stages.includes(t.stage)).length,
-  }));
+  const pipeline = countPipelineStages(scoped);
   const busiest = pipeline.reduce((best, d, i, arr) => (d.value > arr[best].value ? i : best), 0);
 
   // Per-source tiles
@@ -179,26 +166,7 @@ export const DashboardPage: React.FC = () => {
   }));
 
   // Deadline heatmap: next 6 weeks, Mon–Sun
-  const heat = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // back to Monday
-    const weeks = 6;
-    const values = Array.from({ length: weeks }, () => Array(7).fill(0) as number[]);
-    const titles: string[][] = Array.from({ length: weeks }, () => Array(7).fill(''));
-    scoped.forEach((t) => {
-      const d = parseDate(t.deadline);
-      if (!d) return;
-      const idx = Math.floor((d.getTime() - start.getTime()) / DAY_MS);
-      if (idx < 0 || idx >= weeks * 7) return;
-      const w = Math.floor(idx / 7);
-      const day = idx % 7;
-      values[w][day] += 1;
-      titles[w][day] = titles[w][day] ? `${titles[w][day]}; ${t.title}` : t.title;
-    });
-    const rows = Array.from({ length: weeks }, (_, w) => `w/c ${shortDate(new Date(start.getTime() + w * 7 * DAY_MS))}`);
-    return { rows, values, titles };
-  }, [scoped]);
+  const heat = useMemo(() => buildDeadlineWindow(scoped), [scoped]);
 
   // Proposal status distribution
   const statusDist = (['Draft', 'Under Review', 'Approved'] as const).map((s) => ({
@@ -212,22 +180,39 @@ export const DashboardPage: React.FC = () => {
   const won = tenders.filter((t) => t.outcome?.outcome === 'won').length;
   const lost = tenders.filter((t) => t.outcome?.outcome === 'lost').length;
   const tendersWithOutcome = tenders.filter((t) => t.outcome);
-  const latestOutcome = tendersWithOutcome[0] || {
-    title: 'WHO Regional Epidemiological Surveillance (Prior 2025 Submission)',
-    outcome: {
-      outcome: 'won',
-      markedAt: '2026-10-15',
-      learningNote:
-        'Partner highlighted clear FHIR interoperability methodology and specific named consultant CVs as decisive differentiator over incumbent firm.',
-    },
-  };
+  const latestOutcome = tendersWithOutcome[0];
 
-  const handleSaveOutcome = (e: React.FormEvent) => {
+  const handleSaveOutcome = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!outcomeTender) return;
-    recordOutcome(outcomeTender.id, outcomeType, learningNote || 'Decision noted.');
-    setOutcomeTender(null);
-    setLearningNote('');
+    setOutcomeSaving(true);
+    setOutcomeError('');
+    try {
+      const synced = await recordOutcome(outcomeTender.id, outcomeType, learningNote || 'Decision noted.');
+      if (synced) {
+        setOutcomeTender(null);
+        setLearningNote('');
+      } else {
+        setOutcomeError('Outcome saved on this device, but server sync failed.');
+      }
+    } catch {
+      setOutcomeError('Could not sync the outcome. It remains saved on this device.');
+    } finally {
+      setOutcomeSaving(false);
+    }
+  };
+
+  const handleDecision = async (tenderId: string, decision: 'bid' | 'no_bid') => {
+    setActionPending(tenderId);
+    setActionNotice('Saving decision…');
+    try {
+      const synced = await recordDecision(tenderId, decision, decision === 'bid' ? 'Approved on dashboard.' : 'Declined on dashboard.');
+      setActionNotice(synced ? 'Decision saved.' : 'Decision saved on this device, but server sync failed.');
+    } catch {
+      setActionNotice('Could not sync decision. It remains saved on this device.');
+    } finally {
+      setActionPending(null);
+    }
   };
 
   const quickActions = [
@@ -369,6 +354,7 @@ export const DashboardPage: React.FC = () => {
           </button>
         }
       >
+        {actionNotice && <p className="mb-3 text-xs text-slate-600" role="status">{actionNotice}</p>}
         {awaitingDecision.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {awaitingDecision.map((t) => {
@@ -397,12 +383,14 @@ export const DashboardPage: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="primary" className="flex-1"
-                      onClick={() => recordDecision(t.id, 'bid', 'Approved on dashboard.')}>
-                      <Check className="w-3.5 h-3.5" /> Approve bid
+                      disabled={actionPending === t.id}
+                      onClick={() => void handleDecision(t.id, 'bid')}>
+                      <Check className="w-3.5 h-3.5" /> {actionPending === t.id ? 'Saving…' : 'Approve bid'}
                     </Button>
                     <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => recordDecision(t.id, 'no_bid', 'Declined on dashboard.')}>
-                      <X className="w-3.5 h-3.5" /> Decline
+                      disabled={actionPending === t.id}
+                      onClick={() => void handleDecision(t.id, 'no_bid')}>
+                      <X className="w-3.5 h-3.5" /> {actionPending === t.id ? 'Saving…' : 'Decline'}
                     </Button>
                   </div>
                 </div>
@@ -451,6 +439,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
               );
             })}
+            {upcomingTenders.length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No tenders with deadlines yet.</p>}
           </Card>
 
           <Card title="Win / loss" icon={Trophy}>
@@ -466,15 +455,19 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="rounded-lg bg-canvas border border-slate-200 p-3 text-xs">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="font-semibold text-slate-800 truncate">Debrief · {latestOutcome.title}</span>
-                <Badge variant={latestOutcome.outcome?.outcome === 'won' ? 'success' : 'neutral'}>
-                  {latestOutcome.outcome?.outcome.toUpperCase()}
-                </Badge>
+            {latestOutcome ? (
+              <div className="rounded-lg bg-canvas border border-slate-200 p-3 text-xs">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-semibold text-slate-800 truncate">Debrief · {latestOutcome.title}</span>
+                  <Badge variant={latestOutcome.outcome?.outcome === 'won' ? 'success' : 'neutral'}>
+                    {latestOutcome.outcome?.outcome.toUpperCase()}
+                  </Badge>
+                </div>
+                <p className="text-slate-600 leading-relaxed">{latestOutcome.outcome?.learningNote}</p>
               </div>
-              <p className="text-slate-600 leading-relaxed">{latestOutcome.outcome?.learningNote}</p>
-            </div>
+            ) : (
+              <p className="rounded-lg bg-canvas border border-slate-200 p-3 text-xs text-slate-500">No outcomes logged yet.</p>
+            )}
           </Card>
         </div>
 
@@ -551,8 +544,9 @@ export const DashboardPage: React.FC = () => {
               ]}
             />
             <div>
-              <label className="block font-medium text-slate-700 mb-1">Debrief notes ("What we learned")</label>
+              <label htmlFor="outcome-notes" className="block font-medium text-slate-700 mb-1">Debrief notes ("What we learned")</label>
               <textarea
+                id="outcome-notes"
                 rows={3}
                 required
                 value={learningNote}
@@ -565,10 +559,11 @@ export const DashboardPage: React.FC = () => {
               <Button type="button" variant="secondary" onClick={() => setOutcomeTender(null)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                Save outcome
+              <Button type="submit" variant="primary" disabled={outcomeSaving}>
+                {outcomeSaving ? 'Saving…' : 'Save outcome'}
               </Button>
             </div>
+            {outcomeError && <p role="alert" className="text-xs text-red-700">{outcomeError}</p>}
           </form>
         </Modal>
       )}
