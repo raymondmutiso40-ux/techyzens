@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Button, Input } from '../../components/ui';
+import { MEDIA } from '../../data/media';
 
 export const LoginPage: React.FC = () => {
   const { login } = useApp();
@@ -83,7 +85,7 @@ export const LoginPage: React.FC = () => {
     setTimeout(() => {
       setLoading(false);
       login(phone);
-      navigate('/');
+      navigate('/dashboard');
     }, 400);
   };
 
@@ -94,7 +96,47 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-[#faf9f7]">
+      {/* Left: photo + video panel */}
+      <aside className="relative overflow-hidden min-h-[220px] lg:min-h-screen flex flex-col justify-between p-6 lg:p-10 text-white">
+        <img src={MEDIA.loginImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={MEDIA.loginImage}
+        >
+          <source src={MEDIA.loginVideo} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/40 to-stone-950/30" />
+
+        <Link to="/" className="relative flex items-center gap-2 w-fit">
+          <span className="h-7 w-7 rounded bg-white text-stone-900 text-xs font-semibold flex items-center justify-center">
+            TP
+          </span>
+          <span className="font-semibold tracking-tight">TenderPilot</span>
+        </Link>
+
+        <div className="relative hidden lg:block max-w-md">
+          <p className="font-serif text-3xl leading-snug">
+            Good tenders don't wait. Neither should your first draft.
+          </p>
+          <p className="text-sm text-white/75 mt-3">
+            Your shortlist, fit scores and drafts are where you left them.
+          </p>
+        </div>
+      </aside>
+
+      {/* Right: sign-in form */}
+      <section className="relative flex items-center justify-center p-4 py-14">
+        <Link
+          to="/"
+          className="absolute top-5 right-5 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to site
+        </Link>
       <div className="w-full max-w-sm bg-white border border-slate-200 rounded-md p-6 space-y-5">
         <div>
           <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center mb-3">
@@ -145,7 +187,7 @@ export const LoginPage: React.FC = () => {
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(idx, e.key)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
                     className="w-10 h-10 text-center text-sm font-semibold border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white"
                   />
                 ))}
@@ -192,7 +234,7 @@ export const LoginPage: React.FC = () => {
             type="button"
             onClick={() => {
               login(phone);
-              navigate('/');
+              navigate('/dashboard');
             }}
             className="text-xs text-slate-500 hover:text-slate-900"
           >
@@ -200,6 +242,7 @@ export const LoginPage: React.FC = () => {
           </button>
         </div>
       </div>
+      </section>
     </div>
   );
 };

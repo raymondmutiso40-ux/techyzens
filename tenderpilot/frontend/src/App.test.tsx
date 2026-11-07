@@ -3,8 +3,18 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 
 describe('App Router Integration', () => {
-  it('renders TenderPilot layout and dashboard on root route', () => {
+  it('renders the public landing page at /', () => {
     window.history.pushState({}, 'Test', '/');
+    render(<App />);
+
+    expect(screen.getByRole('heading', { level: 1, name: /Win more tenders/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /log in/i })[0]).toHaveAttribute('href', '/login');
+    // Landing page sits outside the app shell
+    expect(screen.queryByRole('link', { name: /audit log/i })).not.toBeInTheDocument();
+  });
+
+  it('renders TenderPilot layout and dashboard at /dashboard', () => {
+    window.history.pushState({}, 'Test', '/dashboard');
     render(<App />);
 
     expect(screen.getAllByText('TenderPilot')[0]).toBeInTheDocument();

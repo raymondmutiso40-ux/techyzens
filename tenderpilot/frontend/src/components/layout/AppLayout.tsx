@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Tenders', to: '/tenders', icon: Compass },
   { name: 'Knowledge Base', to: '/knowledge-base', icon: Database },
   { name: 'Proposals', to: '/proposals', icon: FileText },
@@ -90,7 +90,7 @@ export const AppLayout: React.FC = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === '/'}
+                  end={item.to === '/dashboard'}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 ${

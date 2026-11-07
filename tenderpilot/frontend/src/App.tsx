@@ -9,18 +9,20 @@ import { ProposalsPage } from './pages/proposals/ProposalsPage';
 import { PreferencesPage } from './pages/settings/PreferencesPage';
 import { AuditLogPage } from './pages/audit/AuditLogPage';
 import { LoginPage } from './pages/auth/LoginPage';
+import { LandingPage } from './pages/landing/LandingPage';
 
 export const App: React.FC = () => {
   return (
     <AppProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Auth Route */}
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
 
           {/* Core App Shell */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/tenders" element={<TendersPage />} />
             <Route path="/tenders/:id" element={<TendersPage />} />
             <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
@@ -30,7 +32,7 @@ export const App: React.FC = () => {
             <Route path="/settings/preferences" element={<PreferencesPage />} />
             <Route path="/audit" element={<AuditLogPage />} />
             {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>
