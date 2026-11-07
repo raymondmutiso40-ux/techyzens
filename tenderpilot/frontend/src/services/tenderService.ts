@@ -1,4 +1,5 @@
-import type { Tender, TOR, DecisionRecord, OutcomeFeedback, PipelineStage } from '../data/mockData';
+import type { Tender, TOR } from '../data/mockData';
+import { fromApiTender, type ApiTender } from './apiTender';
 
 const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
 
@@ -20,7 +21,8 @@ export async function fetchTenders(): Promise<Tender[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        return data as Tender[];
+        // Backend uses its own field names; convert so pages never see undefined fields
+        return (data as ApiTender[]).filter((t) => t && t.id).map(fromApiTender);
       }
     }
   } catch (err) {

@@ -79,6 +79,8 @@ export interface Tender {
   decision?: DecisionRecord;
   submittedAt?: string;
   outcome?: OutcomeFeedback;
+  /** Original notice page when the tender was imported from a link */
+  sourceUrl?: string;
 }
 
 export interface KBDocument {

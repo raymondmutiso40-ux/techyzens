@@ -1,5 +1,3 @@
-import type { GeneratedProposal, ProposalChecks } from '../data/mockData';
-
 const API_BASE = '/api/v1';
 
 export interface SendReviewPackPayload {
