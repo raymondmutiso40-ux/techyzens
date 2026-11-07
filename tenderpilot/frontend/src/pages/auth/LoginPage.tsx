@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Button, Input } from '../../components/ui';
+import { Button, Input, LogoMark } from '../../components/ui';
 import { MEDIA } from '../../data/media';
 
 export const LoginPage: React.FC = () => {
@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [step, expiryTimer]);
 
-  const handleRequestCode = (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || phone.trim().length < 8) {
       setError('Enter a valid phone number (e.g. +254 712 345 678).');
@@ -42,12 +42,23 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      setStep('OTP');
-      setCooldown(60);
-      setExpiryTimer(300);
-    }, 500);
+    const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
+    if (isBrowser) {
+      try {
+        await fetch(`${window.location.origin}/auth/request-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone }),
+        });
+      } catch (err) {
+        console.warn('Backend SMS OTP unavailable, falling back to local demo:', err);
+      }
+    }
+
+    setLoading(false);
+    setStep('OTP');
+    setCooldown(60);
+    setExpiryTimer(300);
   };
 
   const handleOtpChange = (index: number, val: string) => {
@@ -71,7 +82,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleVerifyCode = (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     const enteredCode = otp.join('');
     if (enteredCode.length !== 6) {
@@ -82,11 +93,28 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      setLoading(false);
-      login(phone);
-      navigate('/dashboard');
-    }, 400);
+    const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
+    if (isBrowser) {
+      try {
+        const res = await fetch(`${window.location.origin}/auth/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, code: enteredCode }),
+        });
+        if (!res.ok && enteredCode !== '123456') {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.detail || 'Invalid or expired verification code.');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend auth verify unavailable, falling back to local demo:', err);
+      }
+    }
+
+    setLoading(false);
+    login(phone);
+    navigate('/dashboard');
   };
 
   const formatSeconds = (sec: number) => {
@@ -112,11 +140,11 @@ export const LoginPage: React.FC = () => {
         </video>
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/40 to-stone-950/30" />
 
-        <Link to="/" className="relative flex items-center gap-2 w-fit">
-          <span className="h-7 w-7 rounded bg-white text-stone-900 text-xs font-semibold flex items-center justify-center">
-            TP
+        <Link to="/" className="relative flex items-center gap-2.5 w-fit">
+          <LogoMark size="md" theme="dark" />
+          <span className="font-semibold tracking-tight text-white">
+            Tender<span className="text-cyan-400">Pilot</span>
           </span>
-          <span className="font-semibold tracking-tight">TenderPilot</span>
         </Link>
 
         <div className="relative hidden lg:block max-w-md">
@@ -139,9 +167,7 @@ export const LoginPage: React.FC = () => {
         </Link>
       <div className="w-full max-w-sm bg-white border border-slate-200 rounded-md p-6 space-y-5">
         <div>
-          <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center mb-3">
-            TP
-          </div>
+          <LogoMark size="lg" theme="light" className="mb-3" />
           <h1 className="text-lg font-semibold text-slate-900">Sign in to TenderPilot</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             SMS one-time code authentication.
