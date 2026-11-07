@@ -1,55 +1,41 @@
 import React, { useState } from 'react';
 import {
-  FileText,
-  Sparkles,
-  Download,
-  Copy,
-  Check,
-  Edit3,
-  Bookmark,
-  Share2,
-  ExternalLink,
-  Save,
-  CheckCircle2,
-  UserCheck,
-  Building2,
-  Layers,
-  ChevronDown,
-  Plus,
-  Loader2
-} from 'lucide-react';
+  PageHeader,
+  Button,
+  Modal,
+  Badge,
+  Select,
+  EmptyState
+} from '../../components/ui';
 import { useApp } from '../../context/AppContext';
 import type { GeneratedProposal, ProposalSection } from '../../data/mockData';
 
 export const ProposalsPage: React.FC = () => {
-  const { proposals, tenders, activeProposal, setActiveProposal, updateProposalContent, createProposalForTender } = useApp();
+  const {
+    proposals,
+    tenders,
+    activeProposal,
+    setActiveProposal,
+    updateProposalContent,
+    createProposalForTender,
+  } = useApp();
 
-  const [currentProposal, setCurrentProposal] = useState<GeneratedProposal>(
-    activeProposal || proposals[0]
-  );
+  const currentProposal = activeProposal || proposals[0];
   const [selectedSection, setSelectedSection] = useState<ProposalSection>(
-    (activeProposal || proposals[0])?.sections[0]
+    currentProposal?.sections[0]
   );
   const [editingContent, setEditingContent] = useState<string>(
-    (activeProposal || proposals[0])?.sections[0]?.content || ''
+    currentProposal?.sections[0]?.content || ''
   );
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
-  const [savedBanner, setSavedBanner] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // New Generation Wizard State
-  const [showGenModal, setShowGenModal] = useState<boolean>(false);
-  const [selectedTenderId, setSelectedTenderId] = useState<string>(tenders[0]?.id || '');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [genStep, setGenStep] = useState<string>('');
-
-  const handleSelectProposal = (prop: GeneratedProposal) => {
-    setCurrentProposal(prop);
-    setActiveProposal(prop);
-    setSelectedSection(prop.sections[0]);
-    setEditingContent(prop.sections[0]?.content || '');
-    setIsEditing(false);
-  };
+  // New Generation modal
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [selectedTenderId, setSelectedTenderId] = useState(tenders[0]?.id || '');
+  const [templateType, setTemplateType] = useState('technical');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleSelectSection = (sec: ProposalSection) => {
     setSelectedSection(sec);
@@ -62,12 +48,12 @@ export const ProposalsPage: React.FC = () => {
     updateProposalContent(currentProposal.id, selectedSection.id, editingContent);
     setSelectedSection((prev) => ({ ...prev, content: editingContent }));
     setIsEditing(false);
-    showNotice('Section changes saved successfully.');
+    showNotice('Section saved.');
   };
 
   const showNotice = (msg: string) => {
-    setSavedBanner(msg);
-    setTimeout(() => setSavedBanner(null), 3000);
+    setNotice(msg);
+    setTimeout(() => setNotice(null), 3000);
   };
 
   const handleCopyProposal = () => {
@@ -82,215 +68,139 @@ export const ProposalsPage: React.FC = () => {
 
   const handleExportDocx = () => {
     if (!currentProposal) return;
-    showNotice(`Generating Word (.docx) export for "${currentProposal.tenderTitle}"...`);
-    // Simulated instant download of text file with docx extension
     const fullText = currentProposal.sections
       .map((s) => `${s.title}\n\n${s.content}`)
       .join('\n\n---\n\n');
-    const blob = new Blob([fullText], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const blob = new Blob([fullText], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `TenderPilot-Proposal-${currentProposal.id}.docx`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleExportPDF = () => {
-    if (!currentProposal) return;
-    window.print();
+    showNotice('Exported .docx file.');
   };
 
   const handleStartGeneration = () => {
     setIsGenerating(true);
-    setGenStep('Reading tender Terms of Reference & evaluation criteria...');
-
-    setTimeout(() => {
-      setGenStep('Scanning firm Knowledge Base for relevant CVs & past proposals...');
-    }, 900);
-
-    setTimeout(() => {
-      setGenStep('Grounding technical claims with verified past performance evidence...');
-    }, 1800);
-
-    setTimeout(() => {
-      setGenStep('Synthesizing structured Technical Proposal draft...');
-    }, 2600);
-
     setTimeout(() => {
       const newProp = createProposalForTender(selectedTenderId);
-      setCurrentProposal(newProp);
+      setActiveProposal(newProp);
       setSelectedSection(newProp.sections[0]);
       setEditingContent(newProp.sections[0]?.content || '');
       setIsGenerating(false);
       setShowGenModal(false);
-      showNotice('Technical proposal draft generated successfully!');
-    }, 3400);
+      showNotice('Draft generated.');
+    }, 800);
   };
 
   if (!currentProposal) {
     return (
-      <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
-        <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <h3 className="text-base font-bold text-slate-800">No Proposals Drafted Yet</h3>
-        <p className="text-xs text-slate-500 mt-1">Select a tender from the pipeline to generate a technical proposal.</p>
-        <button
-          onClick={() => setShowGenModal(true)}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold"
-        >
-          Generate First Proposal
-        </button>
-      </div>
+      <EmptyState
+        title="No proposals drafted yet"
+        description="Select a scored tender from the pipeline to generate a technical proposal."
+        action={
+          <Button variant="primary" onClick={() => setShowGenModal(true)}>
+            New proposal draft
+          </Button>
+        }
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header & Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-indigo-600 text-sm font-semibold tracking-wide uppercase">
-            <FileText className="w-4 h-4" />
-            <span>Technical Proposal Studio</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">
-            {currentProposal.tenderTitle}
-          </h1>
-          <div className="flex items-center space-x-2 text-xs text-slate-500 mt-1 flex-wrap">
-            <span className="font-semibold text-slate-700">{currentProposal.agency}</span>
-            <span>•</span>
-            <span className="bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded">
-              {currentProposal.version}
-            </span>
-            <span>•</span>
-            <span>Created {currentProposal.createdAt}</span>
-          </div>
+    <div className="space-y-4">
+      <PageHeader
+        category="Proposal Studio"
+        title={currentProposal.tenderTitle}
+        description={`${currentProposal.agency} · ${currentProposal.version} · Created ${currentProposal.createdAt}`}
+      >
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setShowGenModal(true)}>
+            New draft
+          </Button>
+          <Button size="sm" variant="secondary" onClick={handleCopyProposal}>
+            {copied ? 'Copied' : 'Copy text'}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => window.print()}>
+            Print / PDF
+          </Button>
+          <Button size="sm" variant="primary" onClick={handleExportDocx}>
+            Export .docx
+          </Button>
         </div>
+      </PageHeader>
 
-        {/* Global Proposal Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setShowGenModal(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Draft</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyProposal}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied Full Draft' : 'Copy Text'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportDocx}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export to Word (.docx)</span>
-          </button>
-        </div>
-      </div>
-
-      {savedBanner && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{savedBanner}</span>
+      {notice && (
+        <div className="p-2.5 bg-slate-100 border border-slate-300 text-slate-800 rounded text-xs">
+          {notice}
         </div>
       )}
 
-      {/* Main Studio Grid: Section Navigator | Active Editor | Citations Grounding */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Sections List (3 Cols) */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200/90 shadow-xs p-4 space-y-4">
+      {/* 3-column layout: Sections (3) | Editor (6) | Evidence Grounding (3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Sections list */}
+        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-md p-3 space-y-3">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Proposal Sections
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+              Sections
             </span>
-            <div className="space-y-1.5 mt-2">
-              {currentProposal.sections.map((sec) => (
-                <button
-                  key={sec.id}
-                  type="button"
-                  onClick={() => handleSelectSection(sec)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium transition-all flex items-center justify-between ${
-                    selectedSection?.id === sec.id
-                      ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="truncate">{sec.title}</span>
-                  <span className="text-[10px] bg-slate-200/70 text-slate-600 px-1.5 py-0.5 rounded ml-2 shrink-0">
-                    {sec.citations.length} ref{sec.citations.length !== 1 ? 's' : ''}
-                  </span>
-                </button>
-              ))}
+            <div className="space-y-1">
+              {currentProposal.sections.map((sec) => {
+                const isSelected = selectedSection?.id === sec.id;
+                return (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    onClick={() => handleSelectSection(sec)}
+                    className={`w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-slate-100 text-slate-900 font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="truncate">{sec.title}</span>
+                    <span className="text-[10px] text-slate-400 shrink-0 ml-1">
+                      {sec.citations.length} ref{sec.citations.length !== 1 ? 's' : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Assigned Core Personnel
+          <div className="pt-2 border-t border-slate-100">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+              Assigned team
             </span>
-            <div className="space-y-1.5 mt-2">
+            <div className="space-y-1 text-xs text-slate-600">
               {currentProposal.team.map((member, i) => (
-                <div key={i} className="flex items-center space-x-2 text-xs text-slate-700">
-                  <UserCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                  <span className="truncate font-medium">{member}</span>
+                <div key={i} className="truncate">
+                  {member}
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Center Column: Section Editor (6 Cols) */}
-        <div className="lg:col-span-6 bg-white rounded-xl border border-slate-200/90 shadow-xs p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        {/* Center editor */}
+        <div className="lg:col-span-6 bg-white border border-slate-200 rounded-md p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                {selectedSection.title}
-              </h2>
-              <span className="text-[11px] text-slate-400">
-                Grounded in firm CVs and past winning proposals
-              </span>
+              <h2 className="text-sm font-semibold text-slate-900">{selectedSection.title}</h2>
+              <p className="text-[11px] text-slate-500">Grounded in firm CVs and past proposals</p>
             </div>
-
-            <div className="flex items-center gap-2">
-              {isEditing ? (
-                <button
-                  type="button"
-                  onClick={handleSaveSection}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Save Changes</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Content</span>
-                </button>
-              )}
-            </div>
+            {isEditing ? (
+              <Button size="sm" variant="primary" onClick={handleSaveSection}>
+                Save
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={() => setIsEditing(true)}>
+                Edit
+              </Button>
+            )}
           </div>
 
           {isEditing ? (
@@ -298,152 +208,88 @@ export const ProposalsPage: React.FC = () => {
               rows={16}
               value={editingContent}
               onChange={(e) => setEditingContent(e.target.value)}
-              className="w-full p-4 border border-slate-300 rounded-xl text-xs sm:text-sm font-sans text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed font-mono"
+              className="w-full p-3 border border-slate-300 rounded text-xs leading-relaxed text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600 font-mono"
             />
           ) : (
-            <div className="prose prose-sm max-w-none text-slate-700 text-xs sm:text-sm leading-relaxed whitespace-pre-line bg-slate-50/50 p-5 rounded-xl border border-slate-100">
+            <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line p-2">
               {selectedSection.content}
             </div>
           )}
         </div>
 
-        {/* Right Column: Evidence & Grounding Citations (3 Cols) */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+        {/* Right column: Grounding & Citations */}
+        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-md p-3 space-y-3">
           <div>
-            <div className="flex items-center space-x-2 text-indigo-600">
-              <Sparkles className="w-4 h-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wide">
-                Grounding & Evidence
-              </h3>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Every factual claim in this draft traces back to verified documents in your Knowledge Base.
+            <span className="text-[11px] font-semibold text-slate-900 uppercase tracking-wider block">
+              Evidence Grounding
+            </span>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Source claims linked to Knowledge Base documents.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {selectedSection.citations.length > 0 ? (
               selectedSection.citations.map((cite, i) => (
-                <div
-                  key={i}
-                  className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5"
-                >
-                  <div className="flex items-start space-x-2">
-                    <Bookmark className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
-                    <span className="font-semibold text-slate-900 text-xs leading-snug">
-                      {cite.sourceDoc}
-                    </span>
-                  </div>
-
+                <div key={i} className="p-2.5 bg-slate-50 border border-slate-200 rounded text-xs space-y-1">
+                  <div className="font-medium text-slate-900 text-[11px]">{cite.sourceDoc}</div>
                   {cite.pageRef && (
-                    <div className="text-[10px] text-indigo-700 font-medium">
-                      Location: {cite.pageRef}
-                    </div>
+                    <div className="text-[10px] text-slate-500">{cite.pageRef}</div>
                   )}
-
-                  <blockquote className="text-[11px] text-slate-600 italic bg-white p-2 rounded-lg border border-indigo-100/60">
-                    "{cite.excerpt}"
-                  </blockquote>
+                  <p className="text-[11px] text-slate-600 italic">"{cite.excerpt}"</p>
                 </div>
               ))
             ) : (
-              <div className="text-xs text-slate-400 p-3 bg-slate-50 rounded-lg text-center">
-                General procedural text. No specific firm credentials cited in this section.
-              </div>
+              <p className="text-xs text-slate-400 p-2 text-center bg-slate-50 rounded">
+                Procedural text without specific citations.
+              </p>
             )}
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500">
-            <span className="font-semibold text-slate-800">PRD Compliance: </span>
-            Zero hallucination guarantee. Reuses authentic consultant profiles and past methodologies.
           </div>
         </div>
       </div>
 
-      {/* Generation Wizard Modal */}
-      {showGenModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-900 text-base">Generate Technical Proposal Draft</h3>
-              </div>
-              {!isGenerating && (
-                <button
-                  onClick={() => setShowGenModal(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-                >
-                  &times;
-                </button>
-              )}
-            </div>
+      {/* New Draft Modal */}
+      <Modal
+        isOpen={showGenModal}
+        onClose={() => setShowGenModal(false)}
+        title="Generate Proposal Draft"
+        description="Select a tender to generate a structured technical proposal."
+      >
+        <div className="space-y-3">
+          <Select
+            label="Target tender"
+            value={selectedTenderId}
+            onChange={(e) => setSelectedTenderId(e.target.value)}
+            options={tenders.map((t) => ({
+              value: t.id,
+              label: `[${t.agency}] ${t.title} (${t.fitScore}%)`,
+            }))}
+          />
 
-            {isGenerating ? (
-              <div className="py-8 text-center space-y-4">
-                <div className="h-14 w-14 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center animate-spin">
-                  <Loader2 className="w-8 h-8" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">Synthesizing Proposal with AI</h4>
-                  <p className="text-xs text-indigo-600 font-medium mt-1 animate-pulse">{genStep}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                    Select Target Tender from Pipeline
-                  </label>
-                  <select
-                    value={selectedTenderId}
-                    onChange={(e) => setSelectedTenderId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {tenders.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        [{t.agency}] {t.title} (Fit: {t.fitScore}%)
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          <Select
+            label="Proposal structure template"
+            value={templateType}
+            onChange={(e) => setTemplateType(e.target.value)}
+            options={[
+              { value: 'technical', label: 'Technical Proposal (UN / Bilateral Standard)' },
+              { value: 'eoi', label: 'Expression of Interest (EOI)' },
+            ]}
+          />
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                    Proposal Format Template
-                  </label>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
-                    <span className="font-semibold text-slate-900">UN Standard Technical Proposal:</span> Executive Summary, Methodology, Work Plan, Staffing, Past Performance.
-                  </div>
-                </div>
+          <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600">
+            Sections will be structured from evaluation criteria and grounded with matched consultant CVs and past proposals.
+          </div>
 
-                <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-900">
-                  <span className="font-semibold">Knowledge Grounding: </span>
-                  Will pull consultant CVs and past winning proposals matching this tender's TOR.
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowGenModal(false)}
-                    className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartGeneration}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center space-x-1.5"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Generate Proposal</span>
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button variant="secondary" onClick={() => setShowGenModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" disabled={isGenerating} onClick={handleStartGeneration}>
+              {isGenerating ? 'Generating draft...' : 'Generate draft'}
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

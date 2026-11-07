@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Sparkles,
-  Phone,
-  ArrowRight,
-  ShieldCheck,
-  RotateCcw,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { Button, Input } from '../../components/ui';
 
 export const LoginPage: React.FC = () => {
   const { login } = useApp();
@@ -20,11 +12,9 @@ export const LoginPage: React.FC = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(60);
-  const [expiryTimer, setExpiryTimer] = useState(300); // 5 minutes
-  const [attempts, setAttempts] = useState(5);
+  const [expiryTimer, setExpiryTimer] = useState(300);
   const [loading, setLoading] = useState(false);
 
-  // Cooldown timer
   useEffect(() => {
     let timer: any;
     if (step === 'OTP' && cooldown > 0) {
@@ -33,7 +23,6 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [step, cooldown]);
 
-  // Expiry timer
   useEffect(() => {
     let timer: any;
     if (step === 'OTP' && expiryTimer > 0) {
@@ -45,7 +34,7 @@ export const LoginPage: React.FC = () => {
   const handleRequestCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || phone.trim().length < 8) {
-      setError('Please provide a valid phone number (e.g. +254 7XX XXX XXX)');
+      setError('Enter a valid phone number (e.g. +254 712 345 678).');
       return;
     }
     setError(null);
@@ -56,8 +45,7 @@ export const LoginPage: React.FC = () => {
       setStep('OTP');
       setCooldown(60);
       setExpiryTimer(300);
-      setAttempts(5);
-    }, 700);
+    }, 500);
   };
 
   const handleOtpChange = (index: number, val: string) => {
@@ -68,7 +56,6 @@ export const LoginPage: React.FC = () => {
     newOtp[index] = val;
     setOtp(newOtp);
 
-    // Auto-advance focus to next input
     if (val && index < 5) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       nextInput?.focus();
@@ -86,7 +73,7 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     const enteredCode = otp.join('');
     if (enteredCode.length !== 6) {
-      setError('Please enter all 6 digits of your verification code.');
+      setError('Enter the 6-digit verification code.');
       return;
     }
 
@@ -95,21 +82,9 @@ export const LoginPage: React.FC = () => {
 
     setTimeout(() => {
       setLoading(false);
-      // Demo acceptance: allows 123456 or any code in hackathon mode
-      if (enteredCode === '123456' || enteredCode.length === 6) {
-        login(phone);
-        navigate('/tenders');
-      } else {
-        const remaining = attempts - 1;
-        setAttempts(remaining);
-        if (remaining <= 0) {
-          setError('Too many invalid attempts. Code invalidated. Request a new code.');
-          setStep('PHONE');
-        } else {
-          setError(`Invalid code. ${remaining} attempts remaining.`);
-        }
-      }
-    }, 800);
+      login(phone);
+      navigate('/');
+    }, 400);
   };
 
   const formatSeconds = (sec: number) => {
@@ -120,79 +95,46 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center mx-auto shadow-md shadow-indigo-100">
-            <Sparkles className="w-6 h-6" />
+      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-md p-6 space-y-5">
+        <div>
+          <div className="h-6 w-6 rounded bg-slate-900 text-white text-xs font-semibold flex items-center justify-center mb-3">
+            TP
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Sign in to TenderPilot</h1>
-          <p className="text-xs text-slate-500">
-            Enterprise proposal copilot for advisory & consulting firms
+          <h1 className="text-lg font-semibold text-slate-900">Sign in to TenderPilot</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            SMS one-time code authentication.
           </p>
         </div>
 
-        {/* Thrivewave SMS Badge */}
-        <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-center space-x-3 text-xs text-indigo-900">
-          <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0" />
-          <div>
-            <span className="font-semibold">SMS OTP Authentication: </span>
-            Powered by Thrivewave Gateway API.
-          </div>
-        </div>
-
         {error && (
-          <div className="flex items-center space-x-2.5 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded">
+            {error}
           </div>
         )}
 
         {step === 'PHONE' ? (
           <form onSubmit={handleRequestCode} className="space-y-4">
-            <div>
-              <label htmlFor="phone" className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                Phone Number (E.164)
-              </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+254 712 345 678"
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                />
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                We will send a 6-digit one-time code to this number.
-              </p>
-            </div>
+            <Input
+              label="Phone number (E.164)"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+254 712 345 678"
+              required
+            />
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center space-x-2 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              <span>{loading ? 'Sending SMS...' : 'Send Verification Code'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <Button type="submit" variant="primary" disabled={loading} className="w-full">
+              {loading ? 'Sending code...' : 'Send verification code'}
+            </Button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyCode} className="space-y-5">
+          <form onSubmit={handleVerifyCode} className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold uppercase text-slate-700">
-                  Enter 6-Digit Code
-                </label>
-                <span className="text-xs font-medium text-amber-600">
-                  Expires in {formatSeconds(expiryTimer)}
-                </span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-slate-700">Verification code</label>
+                <span className="text-xs text-slate-500">Expires in {formatSeconds(expiryTimer)}</span>
               </div>
 
-              {/* 6-box input */}
               <div className="flex justify-between gap-2">
                 {otp.map((digit, idx) => (
                   <input
@@ -204,7 +146,7 @@ export const LoginPage: React.FC = () => {
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e.key)}
-                    className="w-12 h-12 text-center text-lg font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 bg-slate-50"
+                    className="w-10 h-10 text-center text-sm font-semibold border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white"
                   />
                 ))}
               </div>
@@ -214,58 +156,47 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setStep('PHONE')}
-                  className="text-indigo-600 hover:underline"
+                  className="text-blue-600 hover:underline"
                 >
                   Change
                 </button>
               </div>
-
-              <div className="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 flex items-center justify-between">
-                <span>Demo Code: <strong className="font-mono text-indigo-700">123456</strong></span>
-                <button
-                  type="button"
-                  onClick={() => setOtp(['1', '2', '3', '4', '5', '6'])}
-                  className="text-indigo-600 hover:underline font-semibold"
-                >
-                  Auto-fill
-                </button>
-              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center space-x-2 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              <span>{loading ? 'Verifying...' : 'Verify & Enter TenderPilot'}</span>
-              <CheckCircle2 className="w-4 h-4" />
-            </button>
+            <Button type="submit" variant="primary" disabled={loading} className="w-full">
+              {loading ? 'Verifying...' : 'Sign in'}
+            </Button>
 
-            <div className="text-center pt-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
               <button
                 type="button"
                 disabled={cooldown > 0}
                 onClick={() => setCooldown(60)}
-                className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-indigo-600 disabled:text-slate-400 disabled:cursor-not-allowed"
+                className="hover:text-slate-900 disabled:opacity-50"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>
-                  {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend Code via SMS'}
-                </span>
+                {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOtp(['1', '2', '3', '4', '5', '6'])}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Fill 123456
               </button>
             </div>
           </form>
         )}
 
-        <div className="text-center pt-2 border-t border-slate-100">
+        <div className="pt-3 border-t border-slate-100 text-center">
           <button
+            type="button"
             onClick={() => {
               login(phone);
-              navigate('/tenders');
+              navigate('/');
             }}
-            className="text-xs text-slate-500 hover:text-slate-800 font-medium"
+            className="text-xs text-slate-500 hover:text-slate-900"
           >
-            Direct Demo Mode (Skip Login) →
+            Skip to demo
           </button>
         </div>
       </div>
