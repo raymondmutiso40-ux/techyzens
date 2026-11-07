@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   FileText,
   Database,
@@ -9,8 +9,10 @@ import {
   X,
   Building2,
   PhoneCall,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 interface NavItem {
   name: string;
@@ -27,9 +29,16 @@ const navItems: NavItem[] = [
 
 export const AppLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useApp();
+  const navigate = useNavigate();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -114,12 +123,22 @@ export const AppLayout: React.FC = () => {
               <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900 truncate">Apex Advisors</p>
+              <p className="text-sm font-semibold text-slate-900 truncate">
+                {user.firmName || 'Apex Advisors'}
+              </p>
               <div className="flex items-center text-xs text-slate-500 truncate space-x-1">
                 <PhoneCall className="w-3 h-3 text-slate-400 inline shrink-0" />
-                <span className="truncate">+254 712 345 678</span>
+                <span className="truncate">{user.phone || '+254 712 345 678'}</span>
               </div>
             </div>
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              aria-label="Sign out"
+              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-slate-200/50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
