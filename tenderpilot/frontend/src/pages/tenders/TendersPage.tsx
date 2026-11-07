@@ -12,19 +12,50 @@ import {
   Badge,
   Modal,
   EmptyState,
-  StatusDot
+  StatusDot,
+  Tabs
 } from '../../components/ui';
 import { useApp } from '../../context/AppContext';
-import type { Tender } from '../../data/mockData';
+import type { Tender, PipelineStage } from '../../data/mockData';
+import { extractTORFromFile } from '../../services/tenderService';
+
+const pipelineSteps: { stage: PipelineStage; label: string }[] = [
+  { stage: 'found', label: 'Find' },
+  { stage: 'extracted', label: 'Extract' },
+  { stage: 'scored', label: 'Score' },
+  { stage: 'matched', label: 'Match' },
+  { stage: 'drafted', label: 'Draft' },
+  { stage: 'checked', label: 'Check' },
+  { stage: 'review_sent', label: 'Send' },
+];
 
 export const TendersPage: React.FC = () => {
-  const { tenders, createProposalForTender } = useApp();
+  const {
+    tenders,
+    documents,
+    createProposalForTender,
+    addTenderFromTOR,
+    recordDecision,
+    markSubmittedByHuman,
+    swapConsultantOnTender,
+    removeConsultantFromTender,
+  } = useApp();
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('ALL');
   const [minFitScore, setMinFitScore] = useState(0);
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
+  const [detailTab, setDetailTab] = useState<'OVERVIEW' | 'TOR' | 'TEAM'>('OVERVIEW');
+
+  // Upload TOR modal
+  const [showUploadTORModal, setShowUploadTORModal] = useState(false);
+  const [torFileName, setTorFileName] = useState('');
+  const [isExtractingTOR, setIsExtractingTOR] = useState(false);
+
+  // Swap consultant state
+  const [swappingOldId, setSwappingOldId] = useState<string | null>(null);
+  const [swapNewDocId, setSwapNewDocId] = useState<string>('');
 
   const filteredTenders = tenders.filter((t) => {
     const matchesSearch =
@@ -37,25 +68,120 @@ export const TendersPage: React.FC = () => {
     return matchesSearch && matchesSector && matchesFit;
   });
 
-  const handleGenerateProposal = (tenderId: string) => {
-    createProposalForTender(tenderId);
-    navigate('/proposals');
+  const getStageBadge = (stage: PipelineStage) => {
+    const map: Record<PipelineStage, { label: string; variant: 'neutral' | 'success' | 'warning' | 'danger' | 'info' }> = {
+      found: { label: 'Found', variant: 'neutral' },
+      extracted: { label: 'TOR Extracted', variant: 'info' },
+      scored: { label: 'Scored', variant: 'info' },
+      matched: { label: 'Team Matched', variant: 'info' },
+      drafted: { label: 'Drafted', variant: 'neutral' },
+      checked: { label: 'Checked', variant: 'neutral' },
+      review_sent: { label: 'Review Sent', variant: 'warning' },
+      bid: { label: 'Bid Approved', variant: 'success' },
+      no_bid: { label: 'Declined', variant: 'danger' },
+      submitted_by_human: { label: 'Submitted', variant: 'success' },
+    };
+    const s = map[stage] || { label: stage, variant: 'neutral' };
+    return <Badge variant={s.variant}>{s.label}</Badge>;
   };
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 85) return <Badge variant="success">{score} · Strong</Badge>;
-    if (score >= 70) return <Badge variant="info">{score} · Moderate</Badge>;
-    return <Badge variant="warning">{score} · Low</Badge>;
+  const handleUploadTOR = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!torFileName) return;
+
+    setIsExtractingTOR(true);
+    const extracted = await extractTORFromFile({ name: torFileName, size: 2400000 });
+    const created = addTenderFromTOR(torFileName, extracted);
+    setIsExtractingTOR(false);
+    setShowUploadTORModal(false);
+    setTorFileName('');
+    setSelectedTender(created);
+    setDetailTab('TOR');
+  };
+
+  const handleApproveBid = (tenderId: string) => {
+    recordDecision(tenderId, 'bid', 'Approved by bid desk. Proceed with proposal drafting.');
+    if (selectedTender?.id === tenderId) {
+      setSelectedTender((prev) =>
+        prev
+          ? {
+              ...prev,
+              stage: 'bid',
+              decision: {
+                decision: 'bid',
+                decidedBy: 'Romano Juma',
+                decidedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                notes: 'Approved by bid desk. Proceed with proposal drafting.',
+              },
+            }
+          : null
+      );
+    }
+  };
+
+  const handleDeclineBid = (tenderId: string) => {
+    recordDecision(tenderId, 'no_bid', 'Declined. Strategic or capability mismatch.');
+    if (selectedTender?.id === tenderId) {
+      setSelectedTender((prev) =>
+        prev
+          ? {
+              ...prev,
+              stage: 'no_bid',
+              decision: {
+                decision: 'no_bid',
+                decidedBy: 'Romano Juma',
+                decidedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                notes: 'Declined. Strategic or capability mismatch.',
+              },
+            }
+          : null
+      );
+    }
+  };
+
+  const handleExecuteSwap = (tenderId: string) => {
+    if (!swappingOldId || !swapNewDocId) return;
+    swapConsultantOnTender(tenderId, swappingOldId, swapNewDocId);
+    setSwappingOldId(null);
+    setSwapNewDocId('');
+    // Refresh local selectedTender state
+    const tender = tenders.find((t) => t.id === tenderId);
+    if (tender) setSelectedTender(tender);
+  };
+
+  const getStepStatus = (currentStage: PipelineStage, stepIndex: number) => {
+    const order: PipelineStage[] = [
+      'found',
+      'extracted',
+      'scored',
+      'matched',
+      'drafted',
+      'checked',
+      'review_sent',
+    ];
+    const currentIndex = order.indexOf(currentStage);
+    if (currentIndex === -1) {
+      if (currentStage === 'bid' || currentStage === 'submitted_by_human') return 'complete';
+      return 'pending';
+    }
+    if (stepIndex < currentIndex) return 'complete';
+    if (stepIndex === currentIndex) return 'current';
+    return 'pending';
   };
 
   return (
     <div className="space-y-4">
       <PageHeader
-        category="Discovery"
-        title="Tender Discovery"
-        description="Active procurement notices scored against firm capabilities."
+        category="Bid Pipeline"
+        title="Tender Pipeline"
+        description="Structured TOR extraction, fit scoring, team matching, and bid decisions."
       >
-        <span className="text-xs text-slate-500">Monitoring: UNGM</span>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setShowUploadTORModal(true)}>
+            Upload TOR
+          </Button>
+          <span className="text-xs text-slate-500">Source: UNGM Feed</span>
+        </div>
       </PageHeader>
 
       {/* Filter toolbar */}
@@ -63,7 +189,7 @@ export const TendersPage: React.FC = () => {
         <div className="flex items-center gap-2 flex-1">
           <input
             type="text"
-            placeholder="Search tenders by title, agency, or reference..."
+            placeholder="Search by title, agency, or reference..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="h-8 px-2.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-600 w-full sm:w-72"
@@ -103,11 +229,11 @@ export const TendersPage: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Ref</Th>
-              <Th>Tender title</Th>
+              <Th>Title</Th>
               <Th>Donor / Agency</Th>
-              <Th>Sector</Th>
               <Th>Deadline</Th>
               <Th>Fit score</Th>
+              <Th>Stage</Th>
               <Th className="text-right">Actions</Th>
             </Tr>
           </Thead>
@@ -124,13 +250,19 @@ export const TendersPage: React.FC = () => {
                   </div>
                 </Td>
                 <Td className="text-xs text-slate-700 whitespace-nowrap">{tender.agency}</Td>
-                <Td className="text-xs text-slate-500 whitespace-nowrap">{tender.sector}</Td>
                 <Td className="text-xs text-slate-600 whitespace-nowrap">{tender.deadline}</Td>
-                <Td className="whitespace-nowrap">{getScoreBadge(tender.fitScore)}</Td>
+                <Td className="whitespace-nowrap">
+                  <span className="font-semibold text-slate-900">{tender.fitScore}</span>
+                  <span className="text-[11px] text-slate-500">/100</span>
+                </Td>
+                <Td className="whitespace-nowrap">{getStageBadge(tender.stage)}</Td>
                 <Td className="text-right whitespace-nowrap space-x-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedTender(tender)}
+                    onClick={() => {
+                      setSelectedTender(tender);
+                      setDetailTab('OVERVIEW');
+                    }}
                     className="text-xs text-slate-700 hover:underline"
                   >
                     View
@@ -138,7 +270,10 @@ export const TendersPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={() => handleGenerateProposal(tender.id)}
+                    onClick={() => {
+                      createProposalForTender(tender.id);
+                      navigate('/proposals');
+                    }}
                   >
                     Draft proposal
                   </Button>
@@ -177,47 +312,355 @@ export const TendersPage: React.FC = () => {
           maxWidth="2xl"
         >
           <div className="space-y-4 text-xs">
-            {/* Fit summary */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-start justify-between gap-3">
-              <div>
-                <span className="font-semibold text-slate-800 block mb-0.5">Scoring reason</span>
-                <p className="text-slate-600">{selectedTender.fitReason}</p>
+            {/* 7-Step Pipeline Progress Indicator (Part B #1) */}
+            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded">
+              <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1.5">
+                Pipeline stage
               </div>
-              <div className="shrink-0">{getScoreBadge(selectedTender.fitScore)}</div>
-            </div>
-
-            <div>
-              <span className="font-semibold text-slate-800 block mb-1">Summary</span>
-              <p className="text-slate-600 leading-relaxed">{selectedTender.summary}</p>
-            </div>
-
-            <div>
-              <span className="font-semibold text-slate-800 block mb-1">Requirements</span>
-              <ul className="list-disc pl-4 text-slate-600 space-y-1">
-                {selectedTender.requirements.map((req, i) => (
-                  <li key={i}>{req}</li>
-                ))}
-              </ul>
-            </div>
-
-            {selectedTender.matchedConsultants.length > 0 && (
-              <div>
-                <span className="font-semibold text-slate-800 block mb-1">
-                  Matched consultants
-                </span>
-                <div className="space-y-1">
-                  {selectedTender.matchedConsultants.map((c, i) => (
-                    <div
-                      key={i}
-                      className="p-2 bg-slate-50 border border-slate-200 rounded text-slate-700"
-                    >
-                      {c}
+              <div className="flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                {pipelineSteps.map((step, idx) => {
+                  const status = getStepStatus(selectedTender.stage, idx);
+                  return (
+                    <div key={step.stage} className="flex items-center gap-1.5">
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          status === 'complete'
+                            ? 'bg-slate-900'
+                            : status === 'current'
+                            ? 'bg-blue-600 ring-2 ring-blue-100'
+                            : 'bg-slate-300'
+                        }`}
+                      />
+                      <span
+                        className={
+                          status === 'current'
+                            ? 'font-semibold text-slate-900'
+                            : status === 'complete'
+                            ? 'text-slate-800'
+                            : 'text-slate-400'
+                        }
+                      >
+                        {step.label}
+                      </span>
+                      {idx < pipelineSteps.length - 1 && (
+                        <span className="text-slate-300 ml-1">·</span>
+                      )}
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tabs: Overview | Extracted TOR | Team */}
+            <Tabs
+              activeTab={detailTab}
+              onChange={(t) => setDetailTab(t as any)}
+              tabs={[
+                { id: 'OVERVIEW', label: 'Evaluation & Decision' },
+                { id: 'TOR', label: 'Extracted TOR' },
+                {
+                  id: 'TEAM',
+                  label: 'Team Matching',
+                  count: selectedTender.teamMatching.assigned.length,
+                },
+              ]}
+            />
+
+            {detailTab === 'OVERVIEW' && (
+              <div className="space-y-3">
+                {/* Score & Recommendation Banner */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-900">
+                        Fit Score: {selectedTender.fitScore}/100
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-xs text-slate-700">
+                        AI Recommendation: <strong>{selectedTender.recommendation.toUpperCase()}</strong>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      The AI only recommends. A human makes the go/no-go bid decision.
+                    </p>
+                  </div>
+                  <div>{getStageBadge(selectedTender.stage)}</div>
+                </div>
+
+                {/* Strengths & Risks (Part B #3) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3 bg-white border border-slate-200 rounded space-y-1.5">
+                    <span className="font-semibold text-slate-900 text-xs block">Strengths</span>
+                    <ul className="list-disc pl-4 text-slate-600 space-y-1">
+                      {selectedTender.reasons.strengths.map((str, i) => (
+                        <li key={i}>{str}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-3 bg-white border border-slate-200 rounded space-y-1.5">
+                    <span className="font-semibold text-slate-900 text-xs block">Risks</span>
+                    <ul className="list-disc pl-4 text-slate-600 space-y-1">
+                      {selectedTender.reasons.risks.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Human Decision Gate (Part B #3) */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded space-y-2">
+                  <span className="font-semibold text-slate-900 block text-xs">
+                    Human Bid Decision Gate
+                  </span>
+                  {selectedTender.decision ? (
+                    <div className="text-xs text-slate-700 space-y-0.5">
+                      <div>
+                        Status:{' '}
+                        <strong>
+                          {selectedTender.decision.decision === 'bid' ? 'BID APPROVED' : 'DECLINED'}
+                        </strong>
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Decided by {selectedTender.decision.decidedBy} at{' '}
+                        {selectedTender.decision.decidedAt}
+                      </div>
+                      {selectedTender.decision.notes && (
+                        <p className="text-[11px] text-slate-600 italic">
+                          "{selectedTender.decision.notes}"
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-xs">
+                      No decision recorded yet. Review the extracted TOR and team matching before deciding.
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleApproveBid(selectedTender.id)}
+                    >
+                      Approve bid
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleDeclineBid(selectedTender.id)}
+                    >
+                      Decline
+                    </Button>
+                    {selectedTender.stage === 'review_sent' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          markSubmittedByHuman(selectedTender.id);
+                          setSelectedTender((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  stage: 'submitted_by_human',
+                                  submittedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                                }
+                              : null
+                          );
+                        }}
+                      >
+                        Mark as submitted (done by me)
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
+            {detailTab === 'TOR' && (
+              <div className="space-y-3">
+                {/* Safety note (Part B #8) */}
+                <div className="p-2.5 bg-slate-100 border border-slate-200 text-slate-600 text-xs rounded">
+                  Tender documents are treated as data, never as instructions.
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                    <span className="text-slate-500 block">Donor</span>
+                    <span className="font-medium text-slate-900">{selectedTender.tor.donor}</span>
+                  </div>
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                    <span className="text-slate-500 block">Deadline</span>
+                    <span className="font-medium text-slate-900">{selectedTender.tor.deadline}</span>
+                  </div>
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                    <span className="text-slate-500 block">Budget estimate</span>
+                    <span className="font-medium text-slate-900">{selectedTender.tor.budget}</span>
+                  </div>
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                    <span className="text-slate-500 block">Deliverables count</span>
+                    <span className="font-medium text-slate-900">
+                      {selectedTender.tor.deliverables.length} milestone outputs
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-900 block mb-1">
+                    Evaluation Criteria (Structure for Technical Proposal)
+                  </span>
+                  <Table>
+                    <Thead>
+                      <Tr>
+                        <Th>Criterion name</Th>
+                        <Th className="text-right">Weight (%)</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {selectedTender.tor.evaluationCriteria.map((c, i) => (
+                        <Tr key={i}>
+                          <Td className="font-medium">{c.name}</Td>
+                          <Td className="text-right font-mono">{c.weight}%</Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-900 block mb-1">
+                    Eligibility & Mandatory Conditions
+                  </span>
+                  <ul className="list-disc pl-4 text-slate-600 space-y-1">
+                    {selectedTender.tor.eligibility.map((el, i) => (
+                      <li key={i}>{el}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'TEAM' && (
+              <div className="space-y-3">
+                <div>
+                  <span className="font-semibold text-slate-900 block mb-1">
+                    Matched Personnel vs Required Expertise
+                  </span>
+                  <p className="text-slate-500 text-xs mb-2">
+                    Consultants ranked from Knowledge Base matching TOR criteria.
+                  </p>
+
+                  <Table>
+                    <Thead>
+                      <Tr>
+                        <Th>Consultant</Th>
+                        <Th>Match %</Th>
+                        <Th>Expertise covered</Th>
+                        <Th className="text-right">Actions</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {selectedTender.teamMatching.assigned.map((a) => (
+                        <Tr key={a.consultantId}>
+                          <Td className="font-medium text-slate-900">{a.consultantName}</Td>
+                          <Td className="font-mono">{a.matchPercentage}%</Td>
+                          <Td>
+                            <div className="flex flex-wrap gap-1">
+                              {a.expertiseCovered.map((exp, i) => (
+                                <Badge key={i} variant="neutral">
+                                  {exp}
+                                </Badge>
+                              ))}
+                            </div>
+                          </Td>
+                          <Td className="text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => setSwappingOldId(a.consultantId)}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Swap
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeConsultantFromTender(selectedTender.id, a.consultantId)
+                              }
+                              className="text-xs text-slate-400 hover:text-red-600"
+                            >
+                              Remove
+                            </button>
+                          </Td>
+                        </Tr>
+                      ))}
+
+                      {/* Explicit Gaps Row (Part B #4) */}
+                      {selectedTender.teamMatching.gaps.length > 0 && (
+                        <Tr className="bg-amber-50/50">
+                          <Td className="font-semibold text-amber-900">
+                            Uncovered Capability Gaps
+                          </Td>
+                          <Td className="font-mono text-amber-700">0%</Td>
+                          <Td colSpan={2}>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedTender.teamMatching.gaps.map((gap, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[11px] px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-medium border border-amber-200"
+                                >
+                                  Missing: {gap}
+                                </span>
+                              ))}
+                            </div>
+                          </Td>
+                        </Tr>
+                      )}
+                    </Tbody>
+                  </Table>
+                </div>
+
+                {/* Consultant swap selector */}
+                {swappingOldId && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded space-y-2">
+                    <span className="font-semibold text-slate-800 text-xs block">
+                      Select replacement consultant from Knowledge Base
+                    </span>
+                    <div className="flex gap-2">
+                      <select
+                        value={swapNewDocId}
+                        onChange={(e) => setSwapNewDocId(e.target.value)}
+                        className="flex-1 h-8 px-2 text-xs bg-white border border-slate-300 rounded text-slate-800"
+                      >
+                        <option value="">Choose consultant...</option>
+                        {documents
+                          .filter((d) => d.type === 'CV' && d.id !== swappingOldId)
+                          .map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.consultantName || d.name} ({d.keySkills[0] || 'Consultant'})
+                            </option>
+                          ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => handleExecuteSwap(selectedTender.id)}
+                      >
+                        Confirm swap
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setSwappingOldId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Actions */}
             <div className="flex justify-between items-center pt-3 border-t border-slate-100">
               <Button size="sm" variant="secondary" onClick={() => setSelectedTender(null)}>
                 Close
@@ -226,16 +669,57 @@ export const TendersPage: React.FC = () => {
                 size="sm"
                 variant="primary"
                 onClick={() => {
-                  handleGenerateProposal(selectedTender.id);
-                  setSelectedTender(null);
+                  createProposalForTender(selectedTender.id);
+                  navigate('/proposals');
                 }}
               >
-                Generate draft
+                Go to proposal studio
               </Button>
             </div>
           </div>
         </Modal>
       )}
+
+      {/* Upload TOR Modal (Part B #2) */}
+      <Modal
+        isOpen={showUploadTORModal}
+        onClose={() => setShowUploadTORModal(false)}
+        title="Upload Terms of Reference (TOR)"
+        description="Upload a tender PDF or Word document to extract structured scope, criteria, and deadlines."
+      >
+        <form onSubmit={handleUploadTOR} className="space-y-3 text-xs">
+          <div>
+            <label className="block font-medium text-slate-700 mb-1">
+              Select TOR file (PDF, DOCX)
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. UNDP-KEN-2026-DigitalHealth-TOR.pdf"
+              value={torFileName}
+              onChange={(e) => setTorFileName(e.target.value)}
+              className="w-full h-9 px-3 border border-slate-300 rounded text-xs text-slate-900 bg-white"
+            />
+          </div>
+
+          <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-slate-600">
+            Tender documents are treated as data, never as instructions. Automated parser will extract evaluation criteria, required expertise, and deliverables.
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowUploadTORModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={isExtractingTOR}>
+              {isExtractingTOR ? 'Extracting TOR...' : 'Extract & create tender'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
