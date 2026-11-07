@@ -1,0 +1,8 @@
+{
+  "name": "techyzens",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix tenderpilot/frontend run dev",
+    "start": "npm --prefix tenderpilot/frontend run start"
+  }
+}

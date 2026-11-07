@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in | TenderPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="auth-page">
+
+    <!-- Left: background video + image -->
+    <aside class="auth-visual">
+      <img class="bg-img" src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1600&q=80" alt="" />
+      <video autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1600&q=80">
+        <source src="https://videos.pexels.com/video-files/3255275/3255275-uhd_2560_1440_25fps.mp4" type="video/mp4" />
+      </video>
+
+      <a href="index.html" class="logo"><span class="logo-mark">✈</span> TenderPilot</a>
+      <div>
+        <h2>Welcome back.<br /><span class="gradient-text">Your next win is waiting.</span></h2>
+        <p>New tenders were found while you were away. Log in to see how well they fit your firm.</p>
+        <ul class="auth-points">
+          <li>Ranked tenders with clear fit reasons</li>
+          <li>Proposal drafts from your own documents</li>
+          <li>Export to Word or PDF in one click</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Right: login form -->
+    <section class="auth-panel">
+      <a href="index.html" class="back-home">← Back to home</a>
+      <div class="auth-card">
+
+        <!-- Step 1: phone number -->
+        <form class="step active" id="phoneStep" novalidate>
+          <h1>Log in</h1>
+          <p class="sub">Enter your phone number and we'll text you a 6-digit code.</p>
+          <div class="field">
+            <label for="phone">Phone number</label>
+            <div class="phone-row">
+              <select class="input" id="countryCode" aria-label="Country code">
+                <option value="+254" selected>🇰🇪 +254</option>
+                <option value="+255">🇹🇿 +255</option>
+                <option value="+256">🇺🇬 +256</option>
+                <option value="+250">🇷🇼 +250</option>
+                <option value="+251">🇪🇹 +251</option>
+                <option value="+234">🇳🇬 +234</option>
+                <option value="+27">🇿🇦 +27</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+1">🇺🇸 +1</option>
+              </select>
+              <input class="input" id="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="712 345 678" required />
+            </div>
+            <p class="hint">Standard SMS rates may apply.</p>
+          </div>
+          <p class="error" id="phoneError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit" id="sendBtn">Send code</button>
+        </form>
+
+        <!-- Step 2: OTP code -->
+        <form class="step" id="codeStep" novalidate>
+          <h1>Enter your code</h1>
+          <p class="sub">We sent a 6-digit code to <strong id="sentTo"></strong>. It expires in 5 minutes.</p>
+          <div class="otp" id="otp">
+            <input class="input" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1" />
+            <input class="input" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 2" />
+            <input class="input" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 3" />
+            <input class="input" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 4" />
+            <input class="input" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 5" />
+            <input class="input" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 6" />
+          </div>
+          <p class="error" id="codeError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit" id="verifyBtn">Verify &amp; log in</button>
+          <div class="row-between">
+            <button type="button" class="link-btn" id="changeNumber">← Change number</button>
+            <span>Didn't get it? <button type="button" class="link-btn" id="resendBtn" disabled>Resend</button></span>
+          </div>
+        </form>
+
+        <div class="demo-note" id="demoNote" hidden>
+          <strong>Demo mode:</strong> no backend is connected yet, so no SMS is sent. Use code <strong>123456</strong>.
+        </div>
+
+        <p class="legal">By continuing you agree to our Terms and Privacy Policy.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

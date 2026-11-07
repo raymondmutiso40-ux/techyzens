@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TenderPilot | Find tenders, score fit, draft proposals with AI</title>
+  <meta name="description" content="TenderPilot finds relevant tenders, scores how well they fit your firm, and drafts the technical proposal from your own documents." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ===== Navigation ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="logo"><span class="logo-mark">✈</span> TenderPilot</a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#demo">Get started</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a href="login.html" class="btn btn-ghost">Log in</a>
+        <a href="login.html" class="btn btn-primary">Get started</a>
+        <button class="nav-toggle" id="navToggle" aria-label="Open menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== Hero with background video ===== -->
+  <header class="hero">
+    <video class="hero-video" id="heroVideo" autoplay muted loop playsinline
+           poster="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80">
+      <source src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4" type="video/mp4" />
+    </video>
+    <div class="hero-overlay"></div>
+
+    <div class="container hero-content">
+      <span class="badge"><span class="dot"></span> AI tender agent for consultancy firms</span>
+      <h1>Win more tenders.<br /><span class="gradient-text">Write fewer proposals from scratch.</span></h1>
+      <p class="lead">
+        TenderPilot watches tender portals for you, scores every opportunity against your firm's
+        capabilities, and drafts the technical proposal from your own CVs and past work.
+      </p>
+      <div class="hero-actions">
+        <a href="login.html" class="btn btn-primary">Start free →</a>
+        <a href="#how" class="btn btn-ghost">▶ See how it works</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong>Hours</strong><span>not days, to a first draft</span></div>
+        <div><strong>24/7</strong><span>tender monitoring</span></div>
+        <div><strong>100%</strong><span>grounded in your documents</span></div>
+      </div>
+    </div>
+
+    <button class="video-toggle" id="videoToggle" aria-label="Pause background video">❚❚</button>
+    <a href="#features" class="scroll-hint" aria-label="Scroll down">⌄</a>
+  </header>
+
+  <!-- ===== Features ===== -->
+  <section id="features">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">Features</span>
+        <h2>Everything from "tender published" to "proposal ready"</h2>
+        <p>One workspace for your firm's knowledge, the tenders worth chasing, and the drafts that win them.</p>
+      </div>
+      <div class="features">
+        <article class="card reveal"><div class="icon">📚</div><h3>Knowledge Base</h3><p>CVs, past proposals, and capability statements in one searchable place.</p></article>
+        <article class="card reveal"><div class="icon">🔎</div><h3>Tender Discovery</h3><p>Monitors sources like UN procurement, filtered by your sectors, regions, and keywords.</p></article>
+        <article class="card reveal"><div class="icon">🎯</div><h3>Fit Ranking</h3><p>Every tender gets a fit score with a short, clear reason, so go/no-go is fast.</p></article>
+        <article class="card reveal"><div class="icon">✍️</div><h3>Proposal Drafting</h3><p>Drafts follow the tender's requirements and your preferred structure.</p></article>
+        <article class="card reveal"><div class="icon">📤</div><h3>Review &amp; Export</h3><p>Edit, approve, and export to Word or PDF, ready for submission.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Parallax image band ===== -->
+  <div class="parallax" style="background-image:url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80')">
+    <div class="container reveal">
+      <blockquote>"Stop spending days hunting portals and rewriting the same proposal. Spend that time on the bids you can actually win."</blockquote>
+      <cite>The TenderPilot promise</cite>
+    </div>
+  </div>
+
+  <!-- ===== How it works (image slideshow) ===== -->
+  <section id="how">
+    <div class="container how">
+      <div class="slideshow reveal" id="slideshow">
+        <img class="active" src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=1400&q=80" alt="Team reviewing work on laptops" />
+        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1400&q=80" alt="Analysing documents and charts" loading="lazy" />
+        <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1400&q=80" alt="Colleagues collaborating on a proposal" loading="lazy" />
+        <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1400&q=80" alt="Team celebrating a win" loading="lazy" />
+        <div class="dots" id="dots"></div>
+      </div>
+
+      <div>
+        <div class="section-head reveal" style="text-align:left;margin:0 0 2rem">
+          <span class="eyebrow">How it works</span>
+          <h2>Four steps. Humans stay in control.</h2>
+        </div>
+        <ol class="steps">
+          <li class="reveal"><span class="step-num">1</span><div><h4>Upload your knowledge</h4><p>Add CVs, past proposals, and capability documents.</p></div></li>
+          <li class="reveal"><span class="step-num">2</span><div><h4>Set your preferences</h4><p>Choose sectors, regions, keywords, and tender sources to watch.</p></div></li>
+          <li class="reveal"><span class="step-num">3</span><div><h4>Review ranked tenders</h4><p>See new, relevant tenders with a fit score and a reason for each.</p></div></li>
+          <li class="reveal"><span class="step-num">4</span><div><h4>Generate &amp; export</h4><p>Get a draft technical proposal, edit it, and export to Word/PDF.</p></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Video showcase CTA ===== -->
+  <section id="demo">
+    <div class="container">
+      <div class="showcase reveal">
+        <video autoplay muted loop playsinline preload="metadata"
+               poster="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1600&q=80">
+          <source src="https://videos.pexels.com/video-files/3209828/3209828-uhd_2560_1440_25fps.mp4" type="video/mp4" />
+        </video>
+        <div>
+          <h2>Your next proposal could be <span class="gradient-text">drafted by lunch.</span></h2>
+          <p>Sign in with your phone number. No passwords, just a one-time code.</p>
+          <a href="login.html" class="btn btn-primary">Log in to TenderPilot →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container footer-inner">
+      <a href="index.html" class="logo"><span class="logo-mark">✈</span> TenderPilot</a>
+      <span>© <span id="year"></span> TenderPilot. All rights reserved.</span>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
