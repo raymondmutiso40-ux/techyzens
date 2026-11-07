@@ -1,8 +1,18 @@
 import type { TeamMatchingResult, KBDocument } from '../data/mockData';
 
-// Signatures match planned REST endpoints:
-// POST /api/tenders/:id/match-team
-// POST /api/tenders/:id/team/swap
+const API_BASE = '/api/v1';
+
+export async function fetchTeamMembersFromApi(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE}/team`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend team fetch fallback:', err);
+  }
+  return [];
+}
 
 export async function matchTeamForTender(
   requiredExpertise: string[],

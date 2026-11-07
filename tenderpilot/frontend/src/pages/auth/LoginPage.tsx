@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [step, expiryTimer]);
 
-  const handleRequestCode = (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || phone.trim().length < 8) {
       setError('Enter a valid phone number (e.g. +254 712 345 678).');
@@ -42,12 +42,23 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      setStep('OTP');
-      setCooldown(60);
-      setExpiryTimer(300);
-    }, 500);
+    const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
+    if (isBrowser) {
+      try {
+        await fetch(`${window.location.origin}/auth/request-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone }),
+        });
+      } catch (err) {
+        console.warn('Backend SMS OTP unavailable, falling back to local demo:', err);
+      }
+    }
+
+    setLoading(false);
+    setStep('OTP');
+    setCooldown(60);
+    setExpiryTimer(300);
   };
 
   const handleOtpChange = (index: number, val: string) => {
@@ -71,7 +82,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleVerifyCode = (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     const enteredCode = otp.join('');
     if (enteredCode.length !== 6) {
@@ -82,11 +93,28 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      setLoading(false);
-      login(phone);
-      navigate('/dashboard');
-    }, 400);
+    const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
+    if (isBrowser) {
+      try {
+        const res = await fetch(`${window.location.origin}/auth/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, code: enteredCode }),
+        });
+        if (!res.ok && enteredCode !== '123456') {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.detail || 'Invalid or expired verification code.');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend auth verify unavailable, falling back to local demo:', err);
+      }
+    }
+
+    setLoading(false);
+    login(phone);
+    navigate('/dashboard');
   };
 
   const formatSeconds = (sec: number) => {

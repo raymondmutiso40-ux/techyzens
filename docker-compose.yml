@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  biddesk-api:
+    build: .
+    container_name: biddesk_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=BidDesk AI
+      - DATABASE_URL=postgresql+asyncpg://biddesk_user:biddesk_password@db:5432/biddesk_db
+      - SYNC_DATABASE_URL=postgresql://biddesk_user:biddesk_password@db:5432/biddesk_db
+      - DAILY_SPEND_CAP_USD=50.00
+      - PER_TENDER_SPEND_CAP_USD=5.00
+      - ENABLE_SMS_ALERTS=true
+      - THRIVEWAVE_SENDER_ID=BIDDESK
+      - LLM_PROVIDER=mock
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: biddesk_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=biddesk_user
+      - POSTGRES_PASSWORD=biddesk_password
+      - POSTGRES_DB=biddesk_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

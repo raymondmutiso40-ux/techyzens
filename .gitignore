@@ -4,3 +4,11 @@ dist/
 .env.local
 *.log
 .agent/
+.venv/
+.venv_win/
+__pycache__/
+*.pyc
+*.pyo
+storage/drafts/*.docx
+storage/bid_desk.db
+.vite/

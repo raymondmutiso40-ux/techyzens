@@ -1,3 +1,4 @@
+import { fetchTenders, recordDecisionOnApi, recordOutcomeOnApi, markSubmittedOnApi } from '../services/tenderService';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type {
   Tender,
@@ -125,6 +126,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeProposal, setActiveProposal] = useState<GeneratedProposal | null>(() => {
     return proposals[0] || null;
   });
+
+  useEffect(() => {
+    fetchTenders().then((apiTenders) => {
+      if (apiTenders && apiTenders.length > 0) {
+        setTenders((prev) => {
+          const existingIds = new Set(prev.map((t) => t.id));
+          const newFromApi = apiTenders.filter((t) => !existingIds.has(t.id));
+          return [...prev, ...newFromApi];
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('tp_user', JSON.stringify(user));
@@ -285,6 +298,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
+    recordDecisionOnApi(tenderId, decision, notes);
     addAuditLog({
       actor: 'user',
       actorName: user.name,
@@ -314,6 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
+    recordOutcomeOnApi(tenderId, outcome, learningNote);
     addAuditLog({
       actor: 'user',
       actorName: user.name,
@@ -333,6 +348,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((t) => (t.id === tenderId ? { ...t, stage: 'submitted_by_human', submittedAt: now } : t))
     );
 
+    markSubmittedOnApi(tenderId);
     addAuditLog({
       actor: 'user',
       actorName: user.name,
