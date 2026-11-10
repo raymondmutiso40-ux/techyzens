@@ -40,6 +40,9 @@ class OtariLLMProvider(BaseLLMProvider):
             "model": self.model,
             "messages": messages,
             "max_tokens": 4096,
+            # DeepSeek V4.1 supports disabling reasoning so the completion
+            # returns user-facing text in message.content.
+            "reasoning_effort": "none",
         }
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -55,14 +58,24 @@ class OtariLLMProvider(BaseLLMProvider):
         if not choices:
             raise ValueError("Otari returned no completion choices.")
 
-        message = choices[0].get("message") or {}
+        choice = choices[0]
+        message = choice.get("message") or {}
         content = message.get("content", "")
         if isinstance(content, list):
             content = "".join(
                 part.get("text", "") for part in content if isinstance(part, dict)
             )
         if not isinstance(content, str) or not content.strip():
-            raise ValueError("Otari returned an empty or unsupported message content.")
+            # Do not expose reasoning_content as the user-facing answer. Log only
+            # safe response metadata so the upstream behavior can be diagnosed.
+            logger.error(
+                "Otari returned no user-facing text (model=%s finish_reason=%s has_reasoning_content=%s content_type=%s)",
+                data.get("model") or self.model,
+                choice.get("finish_reason"),
+                bool(message.get("reasoning_content")),
+                type(message.get("content")).__name__,
+            )
+            raise ValueError("Otari returned no user-facing text. Check the model response and reasoning settings.")
 
         usage = data.get("usage") or {}
         input_tokens = int(usage.get("prompt_tokens") or usage.get("input_tokens") or estimated_input)
