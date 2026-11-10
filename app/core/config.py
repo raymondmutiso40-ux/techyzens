@@ -10,6 +10,15 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
+    # Cross-origin frontend configuration for separate Vercel hosting
+    FRONTEND_URL: Optional[str] = None
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # Supabase configuration (credentials are supplied through Railway variables)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+    SUPABASE_STORAGE_BUCKET: str = "tenderpilot-documents"
+
     # Database
     DATABASE_URL: str = f"sqlite+aiosqlite:///{BASE_DIR}/storage/bid_desk.db"
     SYNC_DATABASE_URL: str = f"sqlite:///{BASE_DIR}/storage/bid_desk.db"
