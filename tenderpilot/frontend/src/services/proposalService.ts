@@ -1,4 +1,6 @@
-const API_BASE = '/api/v1';
+import { apiUrl, API_V1_BASE } from './apiBase';
+
+const API_BASE = API_V1_BASE;
 
 export interface SendReviewPackPayload {
   tenderId: string;
@@ -8,7 +10,7 @@ export interface SendReviewPackPayload {
 
 export async function sendReviewPack(payload: SendReviewPackPayload): Promise<{ sent: boolean; timestamp: string }> {
   try {
-    const res = await fetch(`${API_BASE}/pipeline/${payload.tenderId}/send`, {
+    const res = await fetch(apiUrl(`${API_BASE}/pipeline/${payload.tenderId}/send`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
