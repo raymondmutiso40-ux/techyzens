@@ -34,7 +34,21 @@ In another terminal:
 cd tenderpilot/frontend && npm run dev
 ```
 
-The Vite development server proxies `/api` to `http://127.0.0.1:8000`. Set `DATABASE_URL` and `SYNC_DATABASE_URL` for the database (SQLite defaults are local); `LLM_PROVIDER` and the matching `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY` for a hosted model; `FIT_THRESHOLD_SCORE` for the fallback decision threshold; `EMAIL_PROVIDER` plus `RESEND_API_KEY` or SMTP settings for email; and `ENABLE_SMS_ALERTS`, `THRIVEWAVE_API_KEY`, and `BID_LEAD_PHONE` for SMS. See `.env.example` for all supported variables and defaults.
+The Vite development server proxies `/api` to `http://127.0.0.1:8000`. Set `DATABASE_URL` and `SYNC_DATABASE_URL` for the database (SQLite defaults are local); `LLM_PROVIDER` and the matching `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `OTARI_API_KEY` for a hosted model; `FIT_THRESHOLD_SCORE` for the fallback decision threshold; `EMAIL_PROVIDER` plus `RESEND_API_KEY` or SMTP settings for email; and `ENABLE_SMS_ALERTS`, `THRIVEWAVE_API_KEY`, and `BID_LEAD_PHONE` for SMS. See `.env.example` for all supported variables and defaults.
+
+
+### Otari.ai (open-weight and hosted models)
+
+TenderPilot can route scoring, extraction, and proposal generation through Otari's OpenAI-compatible Chat Completions API. Configure these variables in your deployment's secret/environment settings:
+
+```dotenv
+LLM_PROVIDER=otari
+OTARI_API_KEY=your_otari_api_key
+OTARI_BASE_URL=https://api.otari.ai/api
+OTARI_MODEL=provider:model-id
+```
+
+Use the exact model identifier shown in your Otari account or `GET https://api.otari.ai/api/v1/models`; model identifiers are gateway/provider-specific. Choose an open-weight model if required by the hackathon. Do not commit API keys. The provider sends requests to `{OTARI_BASE_URL}/v1/chat/completions`, enforces the existing local spend guard, and records Otari's `usage.cost_usd` when the gateway returns it. If `LLM_PROVIDER=otari` is selected but the key or model is missing, TenderPilot safely uses its deterministic mock provider.
 
 ## Testing
 
