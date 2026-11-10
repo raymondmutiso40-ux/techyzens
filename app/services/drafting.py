@@ -8,6 +8,7 @@ from app.services.llm_provider import get_llm_provider
 from app.services.docx_builder import DocxProposalBuilder
 from app.core.config import get_settings
 from app.core.audit import AuditLogger
+from app.services.supabase_storage import is_configured as storage_is_configured, upload_local_file
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,14 @@ class ProposalDrafter:
             output_path=docx_path
         )
 
+        if storage_is_configured():
+            draft.docx_file_path = await upload_local_file(
+                f"drafts/{docx_filename}",
+                docx_path,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+            Path(docx_path).unlink(missing_ok=True)
+
         tender.status = "DRAFTED"
         await db.commit()
         await db.refresh(draft)
@@ -156,7 +165,7 @@ class ProposalDrafter:
             step_name="DRAFT",
             action=f"Generated Word proposal draft v{version} ({docx_filename})",
             tender_id=tender.id,
-            details={"version": version, "template": template_type, "docx_path": docx_path},
+            details={"version": version, "template": template_type, "docx_path": draft.docx_file_path},
             input_data={"team_count": len(team_shortlist)},
             output_data={"draft_id": draft.id, "file": docx_filename}
         )
