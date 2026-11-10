@@ -10,6 +10,15 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
+    # Cross-origin frontend configuration for separate Vercel hosting
+    FRONTEND_URL: Optional[str] = None
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # Supabase configuration (credentials are supplied through Railway variables)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+    SUPABASE_STORAGE_BUCKET: str = "tenderpilot-documents"
+
     # Database
     DATABASE_URL: str = f"sqlite+aiosqlite:///{BASE_DIR}/storage/bid_desk.db"
     SYNC_DATABASE_URL: str = f"sqlite:///{BASE_DIR}/storage/bid_desk.db"
@@ -31,13 +40,16 @@ class Settings(BaseSettings):
     DEFAULT_BID_LEAD_EMAIL: str = "bid.lead@acme-consulting.org"
 
     # AI / LLM Configuration (Defaulting to mock for offline reliability, supports Claude/Gemini/OpenAI)
-    LLM_PROVIDER: str = "mock"  # "mock" | "claude" | "gemini" | "openai"
+    LLM_PROVIDER: str = "mock"  # "mock" | "claude" | "gemini" | "openai" | "otari"
     ANTHROPIC_API_KEY: Optional[str] = None
     CLAUDE_MODEL: str = "claude-3-5-sonnet-20241022"
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-pro"
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
+    OTARI_API_KEY: Optional[str] = None
+    OTARI_BASE_URL: str = "https://api.otari.ai/api"
+    OTARI_MODEL: str = ""  # Set an exact model ID available in your Otari account
 
     # Email delivery
     EMAIL_PROVIDER: str = "mock"  # "mock" | "resend" | "smtp"

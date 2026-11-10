@@ -1,10 +1,11 @@
 import type { AuditLogEntry } from '../data/mockData';
+import { apiUrl, API_V1_BASE } from './apiBase';
 
-const API_BASE = '/api/v1';
+const API_BASE = API_V1_BASE;
 
 export async function fetchAuditLogsFromApi(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}/audit`);
+    const res = await fetch(apiUrl(`${API_BASE}/audit`));
     if (res.ok) {
       return await res.json();
     }

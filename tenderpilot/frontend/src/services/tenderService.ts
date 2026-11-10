@@ -1,17 +1,18 @@
 import type { Tender, TOR } from '../data/mockData';
 import type { ApiTender } from './apiTender';
 import { normalizeApiTender } from '../utils/tenderLogic';
+import { apiUrl, API_V1_BASE } from './apiBase';
 
-const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost:3000');
+const isBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http');
 
 function getFullUrl(path: string): string | null {
   if (isBrowser) {
-    return `${window.location.origin}${path}`;
+    return apiUrl(path);
   }
   return null;
 }
 
-const API_BASE = '/api/v1';
+const API_BASE = API_V1_BASE;
 
 export async function fetchTenders(): Promise<Tender[]> {
   const url = getFullUrl(`${API_BASE}/tenders`);
@@ -22,7 +23,6 @@ export async function fetchTenders(): Promise<Tender[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        // Backend uses its own field names; normalize before pages render the records.
         return (data as ApiTender[]).filter((t) => t && t.id).map(normalizeApiTender);
       }
     }
@@ -50,7 +50,6 @@ export async function extractTORFromFile(file: { name: string; size: number }): 
     }
   }
 
-  // Graceful fallback
   return Promise.resolve({
     donor: 'UNDP / Global Fund',
     deadline: '2026-12-18',

@@ -1,4 +1,5 @@
 from typing import Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,6 +11,8 @@ from app.models.schemas import HumanDecisionRequest, ProposalDraftUpdate
 from app.services.docx_builder import DocxProposalBuilder
 from app.services.orchestrator import PipelineOrchestrator
 from app.core.audit import AuditLogger
+from app.core.config import get_settings
+from app.services.supabase_storage import is_storage_uri, upload_local_file
 
 router = APIRouter(prefix="/reviews", tags=["Human Review Desk"])
 
@@ -98,12 +101,29 @@ async def update_draft_by_human(
     tender = t_res.scalar_one()
 
     if draft.docx_file_path:
-        DocxProposalBuilder.generate_docx(
-            draft=draft,
-            tender=tender,
-            tor=tender.tor,
-            output_path=draft.docx_file_path
-        )
+        if is_storage_uri(draft.docx_file_path):
+            settings = get_settings()
+            object_key = draft.docx_file_path.split("/", 2)[-1]
+            local_path = settings.DRAFTS_DIR / Path(draft.docx_file_path).name
+            DocxProposalBuilder.generate_docx(
+                draft=draft,
+                tender=tender,
+                tor=tender.tor,
+                output_path=str(local_path)
+            )
+            await upload_local_file(
+                object_key,
+                local_path,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+            local_path.unlink(missing_ok=True)
+        else:
+            DocxProposalBuilder.generate_docx(
+                draft=draft,
+                tender=tender,
+                tor=tender.tor,
+                output_path=draft.docx_file_path
+            )
 
     await db.commit()
     await db.refresh(draft)

@@ -36,6 +36,10 @@ class DocxProposalBuilder:
         output_path: str
     ) -> str:
         doc = docx.Document()
+        styles = doc.styles
+        styles["Normal"].font.name = "Arial"
+        styles["Normal"].font.size = Pt(10)
+        styles["Normal"].paragraph_format.space_after = Pt(6)
 
         # Set standard margins (1 inch)
         for section in doc.sections:
@@ -62,6 +66,7 @@ class DocxProposalBuilder:
 
         # Meta Table
         table_meta = doc.add_table(rows=4, cols=2)
+        table_meta.style = "Table Grid"
         table_meta.alignment = WD_TABLE_ALIGNMENT.CENTER
         meta_data = [
             ("Tender Reference:", tender.reference_code or tender.id),
@@ -118,13 +123,9 @@ class DocxProposalBuilder:
 
         # 5. Staffing Matrix
         add_heading("5. Proposed Key Personnel & Staffing Matrix")
-        doc.add_paragraph(
-            "Our proposed multidisciplinary team brings deep domain expertise, proven donor engagement track records, "
-            "and active technical certifications."
-        )
-
         if draft.staffing_matrix:
             team_table = doc.add_table(rows=len(draft.staffing_matrix) + 1, cols=4)
+            team_table.style = "Table Grid"
             team_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
             headers = ["Personnel Name", "Proposed Role", "Experience", "Core Specialization"]
@@ -137,16 +138,23 @@ class DocxProposalBuilder:
 
             for row_idx, member in enumerate(draft.staffing_matrix, start=1):
                 row_cells = team_table.rows[row_idx].cells
-                row_cells[0].text = str(member.get("full_name", "Expert"))
-                row_cells[1].text = str(member.get("role_title", "Consultant"))
-                row_cells[2].text = f"{member.get('years_of_experience', 5)} years"
-                skills = ", ".join(member.get("key_skills", [])[:3])
-                row_cells[3].text = skills
+                row_cells[0].text = str(member.get("full_name") or "Name not provided")
+                row_cells[1].text = str(member.get("role_title") or "Role not verified")
+                experience = member.get("years_of_experience")
+                row_cells[2].text = f"{experience} years" if experience is not None else "Not provided"
+                skills = ", ".join((member.get("key_skills") or [])[:3])
+                row_cells[3].text = skills or "Not provided"
                 for cell in row_cells:
                     cell.paragraphs[0].runs[0].font.size = Pt(9.5)
                 if row_idx % 2 == 1:
                     for cell in row_cells:
                         set_cell_background(cell, "F9FBF9")
+        else:
+            p_staff = doc.add_paragraph(
+                "INFORMATION REQUIRED: No verified personnel records were matched. "
+                "Add named personnel, roles, experience and supporting CVs/certificates before submission."
+            )
+            p_staff.paragraph_format.space_after = Pt(10)
 
         # 6. Past Performance
         add_heading("6. Past Performance & Institutional Capability")
@@ -158,6 +166,7 @@ class DocxProposalBuilder:
         add_heading("7. Compliance & Mandatory Criteria Matrix")
         if draft.compliance_matrix:
             comp_table = doc.add_table(rows=len(draft.compliance_matrix) + 1, cols=3)
+            comp_table.style = "Table Grid"
             comp_table.alignment = WD_TABLE_ALIGNMENT.CENTER
             c_headers = ["Mandatory Requirement", "Compliance Status", "Supporting Evidence / Verification"]
             for idx, h_text in enumerate(c_headers):
@@ -170,10 +179,16 @@ class DocxProposalBuilder:
             for r_idx, comp_item in enumerate(draft.compliance_matrix, start=1):
                 c_row = comp_table.rows[r_idx].cells
                 c_row[0].text = str(comp_item.get("requirement", "Criterion"))
-                c_row[1].text = str(comp_item.get("status", "COMPLIANT"))
-                c_row[2].text = str(comp_item.get("evidence", "Verified in corporate registry"))
+                c_row[1].text = str(comp_item.get("status", "NOT_VERIFIED"))
+                c_row[2].text = str(comp_item.get("evidence", "No supporting evidence supplied; human verification required."))
                 for cell in c_row:
                     cell.paragraphs[0].runs[0].font.size = Pt(9.5)
+        else:
+            p_compliance = doc.add_paragraph(
+                "NO MANDATORY CRITERIA EXTRACTED: Review the complete Terms of Reference and add all "
+                "mandatory eligibility and compliance requirements before submission."
+            )
+            p_compliance.paragraph_format.space_after = Pt(10)
 
         # Human Review Notice Footer
         doc.add_paragraph().paragraph_format.space_before = Pt(20)

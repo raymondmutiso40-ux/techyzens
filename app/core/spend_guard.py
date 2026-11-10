@@ -75,13 +75,17 @@ class SpendGuard:
 
         return True, warning
 
+    def record_cost(self, tender_id: str, cost: float) -> float:
+        """Record an externally priced request (for example, Otari's billed cost)."""
+        normalized_cost = max(0.0, float(cost))
+        today = self._get_today_key()
+        self._daily_spend[today] = self._daily_spend.get(today, 0.0) + normalized_cost
+        self._tender_spend[tender_id] = self._tender_spend.get(tender_id, 0.0) + normalized_cost
+        return normalized_cost
+
     def record_usage(self, tender_id: str, model: str, input_tokens: int, output_tokens: int) -> float:
         cost = self.calculate_cost(model, input_tokens, output_tokens)
-        today = self._get_today_key()
-
-        self._daily_spend[today] = self._daily_spend.get(today, 0.0) + cost
-        self._tender_spend[tender_id] = self._tender_spend.get(tender_id, 0.0) + cost
-        return cost
+        return self.record_cost(tender_id, cost)
 
     def get_status(self, tender_id: Optional[str] = None) -> Dict:
         today = self._get_today_key()

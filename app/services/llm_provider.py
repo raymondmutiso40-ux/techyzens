@@ -216,6 +216,10 @@ class ClaudeLLMProvider(BaseLLMProvider):
 
 def get_llm_provider() -> BaseLLMProvider:
     settings = get_settings()
+    if settings.LLM_PROVIDER == "otari":
+        from app.services.otari_provider import get_otari_provider
+        provider = get_otari_provider()
+        return provider if provider is not None else MockLLMProvider()
     if settings.LLM_PROVIDER == "claude" and settings.ANTHROPIC_API_KEY:
         return ClaudeLLMProvider(settings.ANTHROPIC_API_KEY, settings.CLAUDE_MODEL)
     return MockLLMProvider()

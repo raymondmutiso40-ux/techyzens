@@ -1,10 +1,11 @@
 import type { TeamMatchingResult, KBDocument } from '../data/mockData';
+import { apiUrl, API_V1_BASE } from './apiBase';
 
-const API_BASE = '/api/v1';
+const API_BASE = API_V1_BASE;
 
 export async function fetchTeamMembersFromApi(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}/team`);
+    const res = await fetch(apiUrl(`${API_BASE}/team`));
     if (res.ok) {
       return await res.json();
     }
