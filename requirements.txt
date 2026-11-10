@@ -35,3 +35,4 @@ uvicorn==0.54.0
 wheel==0.48.0
 asyncpg==0.32.0
 psycopg2-binary==2.9.13
+psycopg[binary]>=3.2,<4
