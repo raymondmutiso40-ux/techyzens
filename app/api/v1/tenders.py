@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -17,6 +17,7 @@ from app.adapters.upload_adapter import UploadAdapter
 from app.services.orchestrator import PipelineOrchestrator
 from app.services.thrivewave_sms import thrivewave_client
 from app.core.audit import AuditLogger
+from app.services.supabase_storage import is_configured as storage_is_configured, is_storage_uri, upload_bytes, download_bytes
 
 router = APIRouter(prefix="/tenders", tags=["Tenders"])
 settings = get_settings()
@@ -244,10 +245,19 @@ async def upload_tender_document(
     saved_filename = f"{Path(file.filename).stem}_{int(datetime.now().timestamp())}{file_ext}"
     dest_path = settings.DOCUMENTS_DIR / saved_filename
 
+    file_bytes = await file.read()
     with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(file_bytes)
 
     raw_text = UploadAdapter.read_document_text(str(dest_path))
+    stored_document_path = str(dest_path)
+    if storage_is_configured():
+        stored_document_path = await upload_bytes(
+            f"tenders/{saved_filename}",
+            file_bytes,
+            file.content_type or "application/octet-stream",
+        )
+        dest_path.unlink(missing_ok=True)
 
     tender = Tender(
         reference_code=f"UPL-{Path(file.filename).stem[:10].upper()}",
@@ -257,7 +267,7 @@ async def upload_tender_document(
         deadline=deadline,
         budget=budget,
         country=country,
-        raw_document_path=str(dest_path),
+        raw_document_path=stored_document_path,
         raw_text=raw_text,
         status="EXTRACTED"
     )
@@ -392,11 +402,26 @@ async def download_proposal_docx(tender_id: str, db: AsyncSession = Depends(get_
         .order_by(ProposalDraft.version.desc())
     )
     draft = res.scalar_one_or_none()
-    if not draft or not draft.docx_file_path or not Path(draft.docx_file_path).exists():
+    if not draft or not draft.docx_file_path:
         raise HTTPException(status_code=404, detail="Word proposal draft not found or not yet generated.")
 
+    if is_storage_uri(draft.docx_file_path):
+        try:
+            content, content_type = await download_bytes(draft.docx_file_path)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="Could not retrieve the proposal document from cloud storage.") from exc
+        filename = draft.docx_file_path.rsplit("/", 1)[-1]
+        return Response(
+            content=content,
+            media_type=content_type or "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    local_path = Path(draft.docx_file_path)
+    if not local_path.exists():
+        raise HTTPException(status_code=404, detail="Word proposal draft file is missing.")
     return FileResponse(
-        path=draft.docx_file_path,
+        path=str(local_path),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename=Path(draft.docx_file_path).name
+        filename=local_path.name
     )
