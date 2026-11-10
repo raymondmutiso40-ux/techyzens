@@ -37,6 +37,26 @@ cd tenderpilot/frontend && npm run dev
 The Vite development server proxies `/api` to `http://127.0.0.1:8000`. Set `DATABASE_URL` and `SYNC_DATABASE_URL` for the database (SQLite defaults are local); `LLM_PROVIDER` and the matching `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `OTARI_API_KEY` for a hosted model; `FIT_THRESHOLD_SCORE` for the fallback decision threshold; `EMAIL_PROVIDER` plus `RESEND_API_KEY` or SMTP settings for email; and `ENABLE_SMS_ALERTS`, `THRIVEWAVE_API_KEY`, and `BID_LEAD_PHONE` for SMS. See `.env.example` for all supported variables and defaults.
 
 
+### Cloud deployment: Vercel + Railway + Supabase
+
+The repository is configured for a split deployment:
+
+- **Vercel frontend:** set the Vercel project Root Directory to `tenderpilot/frontend`. Use the Vite framework preset, `npm run build` as the build command, and `dist` as the output directory. Set `VITE_API_BASE_URL` to the public Railway backend origin (for example, `https://your-service.up.railway.app`, with no trailing slash).
+- **Railway backend:** deploy the repository root from GitHub. Railway uses the root `Dockerfile` and `railway.json`; the container listens on Railway's injected `PORT` and exposes `/health` for health checks.
+- **Supabase database:** create a Postgres project. Copy the **Session pooler** connection string from the Supabase Connect dialog, then change the scheme to `postgresql+asyncpg://` for this async SQLAlchemy backend. Use the pooler host and username exactly as shown in the dashboard. The application creates its tables during startup.
+- **Supabase Storage:** create a **private** bucket named `tenderpilot-documents`. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_STORAGE_BUCKET` on the Railway backend only. The service-role key must never be exposed to the browser or committed to GitHub. Uploaded TOR files and generated proposal DOCX files use this private bucket when storage credentials are configured; otherwise local storage is used.
+
+Set these backend variables in Railway:
+- `DATABASE_URL`: Supabase Session pooler URI using `postgresql+asyncpg://`.
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`.
+- `FRONTEND_URL`: the exact Vercel production URL.
+- `CORS_ORIGINS`: comma-separated local development origins; Vercel preview domains are also allowed by the configured CORS pattern.
+- `LLM_PROVIDER=otari`, `OTARI_API_KEY`, `OTARI_BASE_URL`, and `OTARI_MODEL` if using Otari.
+
+Set `VITE_API_BASE_URL` in Vercel, not Railway. Set secrets such as database passwords, Supabase service-role keys, and Otari API keys only in the backend's Railway Variables panel. Do not put them in Vercel environment variables.
+
+**Existing data:** this deployment does not automatically copy an existing Rumpty database or local document files. Export/import any existing PostgreSQL data and upload any retained local files before switching production traffic. Keep the old deployment available until the new frontend, API, database, and document uploads have all been verified.
+
 ### Otari.ai (open-weight and hosted models)
 
 TenderPilot can route scoring, extraction, and proposal generation through Otari's OpenAI-compatible Chat Completions API. Configure these variables in your deployment's secret/environment settings:
