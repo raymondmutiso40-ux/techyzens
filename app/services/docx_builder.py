@@ -183,6 +183,12 @@ class DocxProposalBuilder:
                 c_row[2].text = str(comp_item.get("evidence", "No supporting evidence supplied; human verification required."))
                 for cell in c_row:
                     cell.paragraphs[0].runs[0].font.size = Pt(9.5)
+        else:
+            p_compliance = doc.add_paragraph(
+                "NO MANDATORY CRITERIA EXTRACTED: Review the complete Terms of Reference and add all "
+                "mandatory eligibility and compliance requirements before submission."
+            )
+            p_compliance.paragraph_format.space_after = Pt(10)
 
         # Human Review Notice Footer
         doc.add_paragraph().paragraph_format.space_before = Pt(20)
